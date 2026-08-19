@@ -3,8 +3,8 @@
 This file tracks planned features and professional improvements for the Headless FFmpeg Automation suite.
 
 ## Phase 3: Visual Polishing & Core Upgrades (In Progress)
-- [ ] **UV Paved Road Execution:** Migrate the entire Python environment management to `uv`. Utilize PEP 723 inline script metadata (`# /// script`) inside `build_headless_movie.py` so users can execute the project directly from GitHub without cloning or manual setup (e.g., `uv run https://raw.githubusercontent.com/...`).
-- [ ] **Automatic Color Correction:** Apply a standard "Underwater Recovery" LUT or `.cube` grade to all MP4s dynamically during the FFmpeg render process (using `lut3d`).
+- [x] **UV Paved Road Execution:** Migrate the entire Python environment management to `uv`. Utilize PEP 723 inline script metadata (`# /// script`) inside `build_headless_movie.py` so users can execute the project directly from GitHub without cloning or manual setup (e.g., `uv run https://raw.githubusercontent.com/...`).
+- [x] **Automatic Color Correction:** Implemented a dynamic depth-based `colorbalance` FFmpeg filter that accurately restores absorbed red light proportionately to the CSV depth telemetry, replacing the need for static `.cube` LUTs.
 - [ ] **Smooth Transitions:** Automate cross-dissolves (crossfades) between raw 4K clips using the FFmpeg `xfade` filter instead of hard cuts.
 
 ## Phase 4: Workflow Improvements
