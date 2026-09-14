@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.1.6] - 2026-09-14
+
+### Fixed
+- **FFmpeg Fallback**: Replaced fragile array index mutation (`cmd.index(...)`) with a robust standalone command builder (`build_ffmpeg_cmd`) for switching between hardware (`h264_videotoolbox`) and software (`libx264`) encoding.
+- **Reliable Cleanup**: Encapsulated the main FFmpeg overlay execution inside a `try/finally` block to guarantee `temp_dir` cleanup, even if interrupted by `Ctrl+C` or "No space left on device" errors.
+- **Immediate Playback**: Added the `-movflags +faststart` flag to the final FFmpeg concatenation command. This shifts the `moov` atom to the front of the `.mp4` file, allowing instant playback in QuickTime without waiting for the entire file to buffer.
+- **Multi-Dive Output**: Fixed an issue where slices from multiple separate dives within the same day were concatenated into a single massive video. The script now iterates over each dive individually and outputs distinct files (e.g., `dive_2026-08-10_dive1.mp4`).
+
 ## [v3.1.5] - 2026-08-25
 
 ### Fixed

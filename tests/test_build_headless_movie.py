@@ -150,7 +150,7 @@ class TestBuildHeadlessMovie(unittest.TestCase):
         mock_load.return_value = pd.DataFrame({'Time': [1]})
         mock_detect.return_value = [pd.DataFrame({'Time': [1000, 1010]})]
         mock_discover.return_value = [{'ts': 900, 'dur': 200, 'path': 'v.mp4'}]
-        mock_build.return_value = ['slice.mp4']
+        mock_build.return_value = {1: ['slice.mp4']}
         mock_concat.return_value = True
 
         args = ['--date', '2026', '--logs_dir', 'l', '--media_dir', 'm', '--output', 'o']
