@@ -6,7 +6,7 @@ This file tracks planned features and professional improvements for the Headless
 - [x] **UV Paved Road Execution:** Migrate the entire Python environment management to `uv`. Utilize PEP 723 inline script metadata (`# /// script`) inside `build_headless_movie.py` so users can execute the project directly from GitHub without cloning or manual setup (e.g., `uv run https://raw.githubusercontent.com/...`).
 - [ ] **Automatic Color Correction:** Apply a standard "Underwater Recovery" LUT or `.cube` grade to all MP4s dynamically during the FFmpeg render process (using `lut3d`).
 - [ ] **Smooth Transitions:** Automate cross-dissolves (crossfades) between raw 4K clips using the FFmpeg `xfade` filter instead of hard cuts.
-- [x] **Перевірити і оптимізувати unit-tests для кращого менеджменту проекту і розуміння test-coverage.** (Закрито через структурний рефакторинг `main`).
+- [x] **Check and optimize unit-tests for better project management and test-coverage.** (Closed due to structural refactoring of `main`).
 
 ## Phase 3.5: Code Review Remediation (v3.1.5 - v3.1.7)
 
@@ -28,6 +28,7 @@ Full code review revealed 18 issues. Tasks are split across multiple iterations.
 - [ ] **CR-12: Refactor FFmpeg fallback in `build_headless_movie.py`** — Replace brittle `cmd.index(...)` mutation with a standalone `build_ffmpeg_cmd(codec=...)` builder.
 - [ ] **NEW: Reliable Temp File Cleanup** — Use `atexit` or `try/finally` in `build_headless_movie.py` to ensure `temp_dir` is always removed (even on `No space left on device` or `Ctrl+C`).
 - [ ] **NEW: Faststart Fix** — Add `-movflags +faststart` flag to the final FFmpeg render to ensure immediate video playback in QuickTime.
+- [ ] **NEW: Separate Output per Dive** — Instead of concatenating all slices from multiple dives into a single day-long video file, group them and output a distinct MP4 file per dive (e.g., `dive_YYYY-MM-DD_dive1.mp4`).
 
 ### 📅 Planned for v3.1.7 (Tech Debt & Polish)
 - [ ] **CR-11: Clean `EOF` from `.gitignore`** — Remove artifact `EOF` string from `.gitignore` (garbage from `cat << EOF`).
