@@ -6,6 +6,10 @@ import subprocess
 import sys
 import pandas as pd
 import json
+import io
+from contextlib import redirect_stdout, redirect_stderr
+
+from scripts.build_headless_movie import main
 
 @unittest.skipIf(not shutil.which("ffmpeg"), "FFmpeg is required for E2E tests")
 class TestHeadlessEngine(unittest.TestCase):
@@ -49,8 +53,7 @@ class TestHeadlessEngine(unittest.TestCase):
     def test_end_to_end_render(self):
         output_file = os.path.join(self.test_dir, "final_test.mp4")
         expected_output_file = os.path.join(self.test_dir, "final_test_dive1.mp4")
-        cmd = [
-            "uv", "run", "scripts/build_headless_movie.py",
+        args = [
             "--date", self.date,
             "--logs_dir", self.logs_dir,
             "--media_dir", self.media_dir,
@@ -58,14 +61,21 @@ class TestHeadlessEngine(unittest.TestCase):
             "--mode", "highlights",
             "--offset", "0"
         ]
-        res = subprocess.run(cmd, capture_output=True, text=True)
-        self.assertTrue(os.path.exists(expected_output_file), f"FFmpeg failed to produce output video.\nStdout: {res.stdout}\nStderr: {res.stderr}")
+        f_out = io.StringIO()
+        f_err = io.StringIO()
+        with redirect_stdout(f_out), redirect_stderr(f_err):
+            ret = main(args)
+            
+        stdout = f_out.getvalue()
+        stderr = f_err.getvalue()
+        self.assertEqual(ret, 0, f"main() failed:\nStdout: {stdout}\nStderr: {stderr}")
+        self.assertTrue(os.path.exists(expected_output_file), f"FFmpeg failed to produce output video.\nStdout: {stdout}\nStderr: {stderr}")
+
     def test_zero_offset_render(self):
         """Verify the zero-offset path works when --offset is omitted."""
         output_file = os.path.join(self.test_dir, "final_zero_offset.mp4")
         expected_output_file = os.path.join(self.test_dir, "final_zero_offset_dive1.mp4")
-        cmd = [
-            "uv", "run", "scripts/build_headless_movie.py",
+        args = [
             "--date", self.date,
             "--logs_dir", self.logs_dir,
             "--media_dir", self.media_dir,
@@ -73,10 +83,18 @@ class TestHeadlessEngine(unittest.TestCase):
             "--mode", "highlights"
             # NOTE: No --offset flag — exercises auto-calculation
         ]
-        res = subprocess.run(cmd, capture_output=True, text=True)
-        self.assertNotIn("TypeError", res.stderr, f"Zero-offset crashed:\nStdout: {res.stdout}\nStderr: {res.stderr}")
-        self.assertIn("Using default zero-offset (Camera RTC Sync)", res.stdout, f"Zero-offset message missing:\nStdout: {res.stdout}")
-        self.assertTrue(os.path.exists(expected_output_file), f"FFmpeg failed to produce output video.\nStdout: {res.stdout}\nStderr: {res.stderr}")
+        f_out = io.StringIO()
+        f_err = io.StringIO()
+        with redirect_stdout(f_out), redirect_stderr(f_err):
+            ret = main(args)
+            
+        stdout = f_out.getvalue()
+        stderr = f_err.getvalue()
+        
+        self.assertNotIn("TypeError", stderr, f"Zero-offset crashed:\nStdout: {stdout}\nStderr: {stderr}")
+        self.assertIn("Using default zero-offset (Camera RTC Sync)", stdout, f"Zero-offset message missing:\nStdout: {stdout}")
+        self.assertEqual(ret, 0, f"main() failed:\nStdout: {stdout}\nStderr: {stderr}")
+        self.assertTrue(os.path.exists(expected_output_file), f"FFmpeg failed to produce output video.\nStdout: {stdout}\nStderr: {stderr}")
 
 if __name__ == "__main__":
     unittest.main()

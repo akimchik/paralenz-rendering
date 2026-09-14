@@ -4,7 +4,6 @@ import pandas as pd
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from scripts.calc_offset import calculate_time_drift, get_meta
 
 class TestCalcOffset(unittest.TestCase):

@@ -26,9 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Test Optimization & Refactoring**: Disassembled the monolithic `main()` function in `build_headless_movie.py` into distinct pure functions (`parse_dive_list`, `load_and_filter_logs`, `detect_dives`, `calculate_highlight_windows`, `discover_videos`).
+- **CLI Tools Refactor**: Streamlined the CLI entrypoints and unified argument parsing logic across all auxiliary scripts.
+- **CI Migration**: Migrated the continuous integration pipeline to use `pytest-cov`, providing accurate logical coverage measurement on GitHub Actions.
+- **TDD Mandates**: Added explicit Test-Driven Development (TDD) mandates to `SKILL.md` to prevent regressions.
+- **DoD Checklist**: Formalized the Definition of Done (DoD) checklist for code reviews and pull requests.
 - Added robust unit tests (`tests/test_build_headless_movie.py`) using mocks to accurately measure logical coverage with `pytest-cov`, making the project test-friendly and resilient for future enhancements.
 - Fixed a milliseconds precision bug in `format_srt_time`.
-
 ## [v3.1.3] - 2026-08-19
 
 ### Changed

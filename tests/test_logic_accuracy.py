@@ -70,7 +70,6 @@ class TestLogicAccuracy(unittest.TestCase):
     def test_color_correction_logic(self):
         """Verify dynamic depth-based color correction correctly scales and caps red channel boost."""
         import sys, os
-        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
         from scripts.build_headless_movie import get_color_correction_filter
         # Test 0m or water_type='none'
         self.assertEqual(get_color_correction_filter(0.0), "")
