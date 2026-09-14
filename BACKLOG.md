@@ -20,15 +20,15 @@ Full code review revealed 18 issues. Tasks are split across multiple iterations.
 - [x] **CR-05: Test `validate_output.py` — remove duplicate `import shutil` and hardcodes**
 
 ### 🚧 Planned for v3.1.6 (High Priority & Stability)
-- [ ] **CR-06: Bug in `render` — add `exit 1`** — Script does not exit after `echo "Usage: ./render -d YYYY-MM-DD"`. Add `exit 1` to prevent running with empty `$DATE`.
+- [x] **CR-06: Bug in `render` — add `exit 1`** — Script does not exit after `echo "Usage: ./render -d YYYY-MM-DD"`. Add `exit 1` to prevent running with empty `$DATE`.
 - [ ] **CR-07: Rewrite `test_srt_generation.py`** — Replace raw source code checks (`assertIn(expected, self.code)`) with real unit tests asserting `format_srt_time()` behavior.
 - [ ] **CR-08: Fix `test_logic_accuracy.py`** — Replace duplicated local `detect_dives_logic()` (gap=1800) with imported `detect_dives()` (gap=7200) from `scripts/build_headless_movie.py`.
 - [ ] **CR-09: Update `skill/python-telemetry.md`** — Replace references of outdated `requirements.txt` with PEP 723 + `uv`.
 - [ ] **CR-10: Align SKILL.md regarding `./render` wrapper** — Remove the word "legacy" and acknowledge `./render` as a valid entry point, or justify its removal.
-- [ ] **CR-12: Refactor FFmpeg fallback in `build_headless_movie.py`** — Replace brittle `cmd.index(...)` mutation with a standalone `build_ffmpeg_cmd(codec=...)` builder.
-- [ ] **NEW: Reliable Temp File Cleanup** — Use `atexit` or `try/finally` in `build_headless_movie.py` to ensure `temp_dir` is always removed (even on `No space left on device` or `Ctrl+C`).
-- [ ] **NEW: Faststart Fix** — Add `-movflags +faststart` flag to the final FFmpeg render to ensure immediate video playback in QuickTime.
-- [ ] **NEW: Separate Output per Dive** — Instead of concatenating all slices from multiple dives into a single day-long video file, group them and output a distinct MP4 file per dive (e.g., `dive_YYYY-MM-DD_dive1.mp4`).
+- [x] **CR-12: Refactor FFmpeg fallback in `build_headless_movie.py`** — Replace brittle `cmd.index(...)` mutation with a standalone `build_ffmpeg_cmd(codec=...)` builder.
+- [x] **NEW: Reliable Temp File Cleanup** — Use `atexit` or `try/finally` in `build_headless_movie.py` to ensure `temp_dir` is always removed (even on `No space left on device` or `Ctrl+C`).
+- [x] **NEW: Faststart Fix** — Add `-movflags +faststart` flag to the final FFmpeg render to ensure immediate video playback in QuickTime.
+- [x] **NEW: Separate Output per Dive** — Instead of concatenating all slices from multiple dives into a single day-long video file, group them and output a distinct MP4 file per dive (e.g., `dive_YYYY-MM-DD_dive1.mp4`).
 
 ### 📅 Planned for v3.1.7 (Tech Debt & Polish)
 - [ ] **CR-11: Clean `EOF` from `.gitignore`** — Remove artifact `EOF` string from `.gitignore` (garbage from `cat << EOF`).

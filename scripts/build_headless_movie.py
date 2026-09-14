@@ -124,8 +124,17 @@ def calculate_highlight_windows(dive, d_start, d_end, mode):
         windows.append((d_start - 60, d_end + 60))
     return windows
 
+def build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, in_path, vf, out_path, use_hardware=True):
+    base_cmd = [ffmpeg_bin, '-y', '-ss', str(s_start), '-t', str(s_dur), '-i', in_path, '-vf', vf]
+    if use_hardware:
+        base_cmd.extend(['-c:v', 'h264_videotoolbox', '-b:v', '80M', '-r', '60'])
+    else:
+        base_cmd.extend(['-c:v', 'libx264', '-crf', '18', '-preset', 'fast', '-r', '60'])
+    base_cmd.extend(['-c:a', 'aac', '-b:a', '320k', out_path])
+    return base_cmd
+
 def build_overlay_slices(dives, videos, calc_offset, temp_dir, mode, target_dives, water_type):
-    processed = []
+    processed_by_dive = {}
     ffmpeg_bin = get_ffmpeg_path()
 
     for d_idx, dive in enumerate(dives):
@@ -133,6 +142,7 @@ def build_overlay_slices(dives, videos, calc_offset, temp_dir, mode, target_dive
         if target_dives and current_dive_id not in target_dives:
             continue
 
+        processed_by_dive[current_dive_id] = []
         d_start, d_end = dive['Time'].min(), dive['Time'].max()
         print(f"Processing Dive #{current_dive_id}: {d_start} to {d_end}")
 
@@ -173,25 +183,26 @@ def build_overlay_slices(dives, videos, calc_offset, temp_dir, mode, target_dive
                     avg_depth = slice_df['Depth'].mean() if not slice_df.empty else 0.0
                     cc_filter = get_color_correction_filter(avg_depth, water_type=water_type)
 
-                    cmd = [ffmpeg_bin, '-y', '-ss', str(s_start), '-t', str(s_dur), '-i', v['path'],
-                           '-vf', f"{cc_filter}subtitles='{escaped_srt}':force_style='FontSize=5,Alignment=7,BorderStyle=3,Outline=1,Shadow=0,MarginV=15,MarginR=15,FontName=Arial'",
-                           '-c:v', 'h264_videotoolbox', '-b:v', '80M', '-r', '60', '-c:a', 'aac', '-b:a', '320k', out_s]
+                    vf_arg = f"{cc_filter}subtitles='{escaped_srt}':force_style='FontSize=5,Alignment=7,BorderStyle=3,Outline=1,Shadow=0,MarginV=15,MarginR=15,FontName=Arial'"
 
+                    cmd = build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, v['path'], vf_arg, out_s, use_hardware=True)
                     res = run_cmd(cmd)
+                    
                     if res.returncode != 0:
-                        cmd[cmd.index('h264_videotoolbox')] = 'libx264'
-                        cmd[cmd.index('-b:v')] = '-crf'
-                        cmd[cmd.index('80M')] = '18'
-                        cmd.insert(cmd.index('-crf') + 2, '-preset')
-                        cmd.insert(cmd.index('-preset') + 1, 'fast')
+                        print(f" -> Hardware encoding failed, falling back to software for {os.path.basename(v['path'])}")
+                        cmd = build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, v['path'], vf_arg, out_s, use_hardware=False)
                         res = run_cmd(cmd)
 
                     if os.path.exists(out_s):
-                        processed.append(out_s)
+                        processed_by_dive[current_dive_id].append(out_s)
                         print(f" -> Merged: {os.path.basename(v['path'])} | Extracted {s_dur:.1f}s | Output: {os.path.basename(out_s)}")
                     else:
                         print(f" -> Failed to create slice from {os.path.basename(v['path'])}")
-    return processed
+                        
+        if not processed_by_dive[current_dive_id]:
+            del processed_by_dive[current_dive_id]
+            
+    return processed_by_dive
 
 def concatenate_slices(processed, output, temp_dir):
     if not processed:
@@ -202,7 +213,7 @@ def concatenate_slices(processed, output, temp_dir):
         for p in processed:
             f.write(f"file '{p}'\n")
 
-    final_cmd = [get_ffmpeg_path(), '-y', '-f', 'concat', '-safe', '0', '-i', list_path, '-c', 'copy', os.path.abspath(output)]
+    final_cmd = [get_ffmpeg_path(), '-y', '-f', 'concat', '-safe', '0', '-i', list_path, '-c', 'copy', '-movflags', '+faststart', os.path.abspath(output)]
     res = run_cmd(final_cmd)
 
     return res.returncode == 0 and os.path.exists(output)
@@ -255,23 +266,34 @@ def main(args=None):
     temp_dir = os.path.abspath(f"temp_slices_{parsed.mode}")
     os.makedirs(temp_dir, exist_ok=True)
 
-    processed = build_overlay_slices(dives, videos, calc_offset, temp_dir, parsed.mode, target_dives, parsed.water)
+    try:
+        processed_by_dive = build_overlay_slices(dives, videos, calc_offset, temp_dir, parsed.mode, target_dives, parsed.water)
 
-    if processed:
-        success = concatenate_slices(processed, parsed.output, temp_dir)
-        if success:
-            print(f"\nSUCCESS! Rendered: {os.path.abspath(parsed.output)}")
-            try:
-                shutil.rmtree(temp_dir)
-            except Exception:
-                pass
-            return 0
+        if processed_by_dive:
+            all_success = True
+            for dive_id, processed in processed_by_dive.items():
+                base_out, ext = os.path.splitext(parsed.output)
+                if f"dive{dive_id}" not in base_out:
+                    dive_output = f"{base_out}_dive{dive_id}{ext}"
+                else:
+                    dive_output = parsed.output
+                    
+                success = concatenate_slices(processed, dive_output, temp_dir)
+                if success:
+                    print(f"\nSUCCESS! Rendered Dive #{dive_id}: {os.path.abspath(dive_output)}")
+                else:
+                    print(f"\nCRITICAL ERROR: Final concatenation failed for Dive #{dive_id}.")
+                    all_success = False
+            return 0 if all_success else 1
         else:
-            print("\nCRITICAL ERROR: Final concatenation failed.")
+            print("\nError: No correlated clips found.")
             return 1
-    else:
-        print("\nError: No correlated clips found.")
-        return 1
+    finally:
+        try:
+            import shutil
+            shutil.rmtree(temp_dir)
+        except Exception:
+            pass
 
 if __name__ == "__main__":
     import sys
