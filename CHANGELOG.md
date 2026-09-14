@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Tech Debt & Polish**: Cleaned up `.gitignore`, added PEP 723 metadata to auxiliary scripts.
 - **Test Modernization**: Added `pyproject.toml` and `conftest.py` to fix relative import hacks across the test suite.
-- **Coverage Accuracy**: Migrated E2E tests (`test_headless_engine.py` and `validate_output.py`) to directly import `main()` instead of using subprocess execution. This allowed `pytest-cov` to accurately track integration coverage, increasing the project's overall logical test coverage to **84%**.
+- **Coverage Accuracy**: Migrated E2E tests (`test_headless_engine.py` and `validate_output.py`) to directly import `main()` instead of using subprocess execution. This allows `pytest-cov` to accurately track integration coverage across the E2E tests.
 
 ## [v3.1.6] - 2026-09-14
 

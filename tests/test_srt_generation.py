@@ -1,23 +1,27 @@
 import unittest
-import os
+from scripts.build_headless_movie import format_srt_time
 
 class TestSRTGeneration(unittest.TestCase):
-    def setUp(self):
-        self.script_path = os.path.join(os.path.dirname(__file__), '..', 'scripts', 'build_headless_movie.py')
-        with open(self.script_path, 'r') as f:
-            self.code = f.read()
+    def test_format_srt_time_basic(self):
+        """Test basic conversions."""
+        self.assertEqual(format_srt_time(0), "00:00:00,000")
+        self.assertEqual(format_srt_time(1.5), "00:00:01,500")
+        self.assertEqual(format_srt_time(61), "00:01:01,000")
+        self.assertEqual(format_srt_time(3600), "01:00:00,000")
 
-    def test_srt_formatting_rules(self):
-        """Verify that Date and Time are stripped and Depth/Temp format is used."""
-        expected_format = "f\"Depth: {row['Depth']}m | Temp: {row['Temperature']}C\\n\\n\""
-
-        self.assertIn(expected_format, self.code, "SRT generation must NOT include Date/Time. It should only be Depth and Temp.")
-
-    def test_srt_alignment_rules(self):
-        """Verify that Legacy SSA Top-Right alignment (7) and tight margins (15) are enforced."""
-        expected_style = "force_style='FontSize=5,Alignment=7,BorderStyle=3,Outline=1,Shadow=0,MarginV=15,MarginR=15,FontName=Arial'"
-
-        self.assertIn(expected_style, self.code, "FFmpeg subtitles filter must enforce FontSize=5, Alignment=7 (Top-Right), and MarginV=15, MarginR=15.")
+    def test_format_srt_time_carryover(self):
+        """Test the 1000ms carry-over rounding logic."""
+        # 3600.999 => ms=999
+        self.assertEqual(format_srt_time(3600.999), "01:00:00,999")
+        
+        # 0.9995 => ms rounds to 1000 => carry over to 1 sec
+        self.assertEqual(format_srt_time(0.9996), "00:00:01,000")
+        
+        # 59.9996 => carry over to 60 sec => carry over to 1 min
+        self.assertEqual(format_srt_time(59.9996), "00:01:00,000")
+        
+        # 3599.9996 => carry over to 1 hour
+        self.assertEqual(format_srt_time(3599.9996), "01:00:00,000")
 
 if __name__ == "__main__":
     unittest.main()

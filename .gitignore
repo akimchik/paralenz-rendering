@@ -40,3 +40,8 @@ test_output*.mp4
 # Test coverage
 .coverage
 .pytest_cache/
+
+# Lockfiles
+*.lock
+*lock.json
+*lock.yaml
