@@ -5,7 +5,7 @@ import os
 import sys
 
 # Ensure scripts can be imported
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from scripts.build_headless_movie import (
     parse_dive_list,
     detect_dives,
@@ -13,7 +13,10 @@ from scripts.build_headless_movie import (
     format_srt_time,
     load_and_filter_logs,
     discover_videos,
-    get_color_correction_filter
+    get_color_correction_filter,
+    concatenate_slices,
+    build_overlay_slices,
+    main
 )
 
 class TestBuildHeadlessMovie(unittest.TestCase):
@@ -90,7 +93,7 @@ class TestBuildHeadlessMovie(unittest.TestCase):
     @patch('scripts.build_headless_movie.get_ffmpeg_path', return_value='ffmpeg')
     @patch('scripts.build_headless_movie.run_cmd')
     def test_concatenate_slices(self, mock_run_cmd, mock_get_ffmpeg):
-        from scripts.build_headless_movie import concatenate_slices
+        
 
         # Test empty
         self.assertFalse(concatenate_slices([], "out.mp4", "temp"))
@@ -110,7 +113,7 @@ class TestBuildHeadlessMovie(unittest.TestCase):
     @patch('os.path.exists')
     @patch('builtins.open', new_callable=unittest.mock.mock_open)
     def test_build_overlay_slices(self, mock_open, mock_exists, mock_run_cmd, mock_get_ffmpeg):
-        from scripts.build_headless_movie import build_overlay_slices
+        
         mock_exists.return_value = True
         mock_run_cmd.return_value.returncode = 0 # success on first try (videotoolbox)
 
@@ -126,7 +129,7 @@ class TestBuildHeadlessMovie(unittest.TestCase):
     @patch('os.path.exists')
     @patch('builtins.open', new_callable=unittest.mock.mock_open)
     def test_build_overlay_slices_fallback(self, mock_open, mock_exists, mock_run_cmd, mock_get_ffmpeg):
-        from scripts.build_headless_movie import build_overlay_slices
+        
         mock_exists.return_value = True
 
         # First call fails (videotoolbox), second succeeds (libx264)
@@ -146,7 +149,7 @@ class TestBuildHeadlessMovie(unittest.TestCase):
     @patch('os.makedirs')
     @patch('shutil.rmtree')
     def test_main_success(self, mock_rmtree, mock_makedirs, mock_concat, mock_build, mock_discover, mock_detect, mock_load):
-        from scripts.build_headless_movie import main
+        
         mock_load.return_value = pd.DataFrame({'Time': [1]})
         mock_detect.return_value = [pd.DataFrame({'Time': [1000, 1010]})]
         mock_discover.return_value = [{'ts': 900, 'dur': 200, 'path': 'v.mp4'}]
@@ -158,7 +161,7 @@ class TestBuildHeadlessMovie(unittest.TestCase):
 
     @patch('scripts.build_headless_movie.load_and_filter_logs')
     def test_main_no_logs(self, mock_load):
-        from scripts.build_headless_movie import main
+        
         mock_load.return_value = pd.DataFrame()
         args = ['--date', '2026', '--logs_dir', 'l', '--media_dir', 'm', '--output', 'o']
         self.assertEqual(main(args), 1)

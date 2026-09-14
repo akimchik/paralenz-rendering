@@ -74,25 +74,31 @@ def create_mock_environment():
     }
 
 
+import io
+from contextlib import redirect_stdout, redirect_stderr
+from scripts.build_headless_movie import main as build_main
+
 def run_engine(env, mode, use_auto_offset=False):
     """Run the headless engine and return the output path + subprocess result."""
     suffix = "auto" if use_auto_offset else "manual"
-    output = os.path.join(env["test_dir"], f"output_{mode}_{suffix}.mp4")
+    base_output = os.path.join(env["test_dir"], f"output_{mode}_{suffix}.mp4")
+    expected_output = os.path.join(env["test_dir"], f"output_{mode}_{suffix}_dive1.mp4")
+    args = ["--date", env["date"], "--logs_dir", env["logs_dir"], "--media_dir", env["media_dir"], "--output", base_output, "--mode", mode]
+    if not use_auto_offset: args += ["--offset", "0"]
 
-    cmd = [
-        sys.executable, "scripts/build_headless_movie.py",
-        "--date", env["date"],
-        "--logs_dir", env["logs_dir"],
-        "--media_dir", env["media_dir"],
-        "--output", output,
-        "--mode", mode,
-    ]
-    if not use_auto_offset:
-        cmd += ["--offset", "0"]
-
-    print(f"\n  Running: {' '.join(os.path.basename(c) for c in cmd)}")
-    res = subprocess.run(cmd, capture_output=True, text=True)
-    return output, res
+    print(f"
+  Running main() with mode {mode}...")
+    f_out = io.StringIO()
+    f_err = io.StringIO()
+    class MockResult:
+        def __init__(self, stdout, stderr, returncode):
+            self.stdout, self.stderr, self.returncode = stdout, stderr, returncode
+            
+    with redirect_stdout(f_out), redirect_stderr(f_err):
+        ret = build_main(args)
+        
+    res = MockResult(f_out.getvalue(), f_err.getvalue(), ret)
+    return expected_output, res
 
 
 def inspect_video(path):

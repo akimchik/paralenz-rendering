@@ -31,13 +31,13 @@ Full code review revealed 18 issues. Tasks are split across multiple iterations.
 - [x] **NEW: Separate Output per Dive** — Instead of concatenating all slices from multiple dives into a single day-long video file, group them and output a distinct MP4 file per dive (e.g., `dive_YYYY-MM-DD_dive1.mp4`).
 
 ### 📅 Planned for v3.1.7 (Tech Debt & Polish)
-- [ ] **CR-11: Clean `EOF` from `.gitignore`** — Remove artifact `EOF` string from `.gitignore` (garbage from `cat << EOF`).
-- [ ] **CR-13: Add PEP 723 inline metadata** — Add `# /// script` block in `calc_offset.py` and `check_videos.py` to auto-fetch `pandas` via `uv run`.
-- [ ] **CR-14: Migrate E2E tests to `main(args=...)`** — `test_headless_engine.py` and `validate_output.py` should import `main()` instead of using subprocess for proper coverage tracking.
-- [ ] **CR-15: Complete CHANGELOG.md v3.1.4** — Add missing items: CLI tools refactor, DoD checklist, CI migration to pytest-cov, SKILL TDD mandates.
-- [ ] **CR-16: Create `tests/conftest.py`** — Replace `sys.path.insert(...)` boilerplate in every test file with a single `conftest.py` or `pyproject.toml` configuration.
-- [ ] **CR-17: Hoist inline imports to module level** — In `test_build_headless_movie.py`, move `from scripts.build_headless_movie import concatenate_slices, build_overlay_slices, main` to the top of the file.
-- [ ] **CR-18: Close UV Paved Road in BACKLOG** — Mark as `[x]` (already implemented in v3.1.1).
+- [x] **CR-11: Clean `EOF` from `.gitignore`** — Remove artifact `EOF` string from `.gitignore` (garbage from `cat << EOF`).
+- [x] **CR-13: Add PEP 723 inline metadata** — Add `# /// script` block in `calc_offset.py` and `check_videos.py` to auto-fetch `pandas` via `uv run`.
+- [x] **CR-14: Migrate E2E tests to `main(args=...)`** — `test_headless_engine.py` and `validate_output.py` should import `main()` instead of using subprocess for proper coverage tracking.
+- [x] **CR-15: Complete CHANGELOG.md v3.1.4** — Add missing items: CLI tools refactor, DoD checklist, CI migration to pytest-cov, SKILL TDD mandates.
+- [x] **CR-16: Create `tests/conftest.py`** — Replace `sys.path.insert(...)` boilerplate in every test file with a single `conftest.py` or `pyproject.toml` configuration.
+- [x] **CR-17: Hoist inline imports to module level** — In `test_build_headless_movie.py`, move `from scripts.build_headless_movie import concatenate_slices, build_overlay_slices, main` to the top of the file.
+- [x] **CR-18: Close UV Paved Road in BACKLOG** — Mark as `[x]` (already implemented in v3.1.1).
 
 ## Phase 4: Workflow Improvements
 - [ ] **Experimental Color Grading Optimization:** The current `colorbalance` approach (Filter #1) amplifies red noise in dark underwater shadows (turning caves purple). We need to explore luma-masking or non-linear RGB curves (`curves` filter) to optimize the red filter: making corals brighter without ruining shadows.
