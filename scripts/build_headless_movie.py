@@ -266,7 +266,7 @@ def main(args=None):
     parser.add_argument("--mode", choices=['highlights', 'full'], default='full')
     parser.add_argument("--offset", type=int, default=None, help="Force manual offset in seconds.")
     parser.add_argument("--dive_list", type=str, default="", help="Comma-separated list of dive IDs.")
-    parser.add_argument("--gap", type=int, default=7200, help="Seconds of gap to split session.")
+    parser.add_argument("--gap", type=int, default=1800, help="Seconds of gap to split session.")
     parser.add_argument("--water", choices=['saltwater', 'freshwater', 'none'], default='saltwater', help="Water type.")
 
     parsed = parser.parse_args(args)

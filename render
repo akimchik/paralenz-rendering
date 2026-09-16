@@ -6,7 +6,7 @@
 # Set defaults
 MODE="full"
 DIVE_LIST=""
-GAP="300" # Default gap to 5 mins based on our findings
+GAP="1800" # Default gap to 5 mins based on our findings
 DATE=""
 OUTPUT=""
 

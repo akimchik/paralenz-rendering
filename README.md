@@ -88,9 +88,9 @@ uv run https://raw.githubusercontent.com/akimchik/paralenz-rendering/main/script
   --output C:\data\media\my_dive.mp4
 ```
 
-## Local Configuration
+## Local Configuration (Using `.env` and `./render`)
 
-If you have cloned the repository, you can execute the engine directly using `uv run`. This handles the `pandas` dependency automatically and provides full access to the CLI flags.
+If you have cloned the repository, you can use the `./render` wrapper script to save time typing long paths. The wrapper reads your `.env` file and passes the paths automatically to the underlying engine.
 
 1. **Copy the template:**
    ```bash
@@ -100,8 +100,14 @@ If you have cloned the repository, you can execute the engine directly using `uv
    - `SEARCH_DIR`: Path to your camera's DCIM folder (where `.MP4` files live).
    - `LOGS_DIR`: Path to your dive logs folder (where `.CSV` files live).
 
-### Basic Usage (Full Day Render)
-Builds a chronological movie of all the day's dives with a dynamic HUD.
+### Basic Usage with Wrapper
+Once `.env` is configured, you only need to provide the date!
+```bash
+./render -d 2026-06-27
+```
+
+### Manual Usage (Without Wrapper)
+If you prefer not to use `.env` or the wrapper, you must provide all paths explicitly:
 ```bash
 uv run scripts/build_headless_movie.py \
   --date 2026-06-27 \
@@ -150,7 +156,7 @@ uv run scripts/build_headless_movie.py \
 | `--mode` | No | `full` | `full` (renders entire sessions) or `highlights` (5-chapter smart slices). |
 | `--offset` | No | `0` | Force manual time sync offset in seconds between telemetry and video. |
 | `--dive_list` | No | `""` | Comma-separated list of Dive IDs to render (e.g. `1,3,4`). Processes all if empty. |
-| `--gap` | No | `7200` | Gap threshold in seconds to detect new dives. Default is 2 hours (7200s). |
+| `--gap` | No | `1800` | Gap threshold in seconds to detect new dives. Default is 30 mins (1800s). |
 | `--water` | No | `saltwater` | `saltwater` (boosts red), `freshwater` (boosts magenta), or `none` (disables correction). |
 
 > [!WARNING]
@@ -159,12 +165,12 @@ uv run scripts/build_headless_movie.py \
 ## Core Advanced Features
 
 ### Global Multi-Dive Support
-The system automatically detects multiple dives in your logs using a configurable gap (default: 2 hours). It correlates each video clip to the correct dive using its recording timestamp.
+The system automatically detects multiple dives in your logs using a configurable gap (default: 30 mins). It correlates each video clip to the correct dive using its recording timestamp.
 - **Auto-Sync:** If you have 3 dives in one day, the script will generate 3 separate HUD profiles and sync the correct data to the correct footage automatically.
 - **Session Detection:** It identifies gaps in activity to separate "Dives" from "Surface intervals."
 
 > [!TIP]
-> The default gap is `7200` seconds (2 hours) to accommodate very long surface intervals. If you need tighter split thresholds, pass a lower value using `--gap`.
+> The default gap is `1800` seconds (30 mins) to accommodate very long surface intervals. If you need tighter split thresholds, pass a lower value using `--gap`.
 
 ### Dynamic HUD
 A real-time depth and temperature HUD is injected into the video using dynamic SubRip (`.srt`) subtitle generation.
