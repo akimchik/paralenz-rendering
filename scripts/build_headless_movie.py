@@ -201,11 +201,11 @@ def build_overlay_slices(dives, videos, calc_offset, temp_dir, mode, target_dive
                             f_srt.write(f"{format_srt_time(rel_t)} --> {format_srt_time(end_t)}\n")
                             f_srt.write(f"Depth: {row['Depth']}m | Temp: {row['Temperature']}C\n\n")
 
-                    escaped_srt = srt_path.replace(':', '\\\\:')
+                    escaped_srt = __import__('os').path.relpath(srt_path).replace('\\', '/')
                     avg_depth = slice_df['Depth'].mean() if not slice_df.empty else 0.0
                     cc_filter = get_color_correction_filter(avg_depth, water_type=water_type)
 
-                    vf_arg = f"{cc_filter}subtitles='{escaped_srt}':force_style='FontSize=5,Alignment=7,BorderStyle=3,Outline=1,Shadow=0,MarginV=15,MarginR=15,FontName=Arial'"
+                    vf_arg = f"{cc_filter}subtitles=f='{escaped_srt}':force_style='FontSize=5,Alignment=7,BorderStyle=3,Outline=1,Shadow=0,MarginV=15,MarginR=15,FontName=Arial'"
 
                     cmd = build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, v['path'], vf_arg, out_s, hw_encoder=hw_encoder)
                     res = run_cmd(cmd)

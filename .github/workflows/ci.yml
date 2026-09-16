@@ -8,7 +8,11 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -17,7 +21,22 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Set up FFmpeg
+      - name: Set up FFmpeg (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Set up FFmpeg (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          curl -sL -o ffmpeg.zip https://evermeet.cx/ffmpeg/getrelease/zip
+          unzip -q ffmpeg.zip
+          sudo mv ffmpeg /usr/local/bin/
+          curl -sL -o ffprobe.zip https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip
+          unzip -q ffprobe.zip
+          sudo mv ffprobe /usr/local/bin/
+
+      - name: Set up FFmpeg (Windows)
+        if: runner.os == 'Windows'
         uses: FedericoCarboni/setup-ffmpeg@v3
 
       - name: Set up uv
