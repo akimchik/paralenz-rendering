@@ -88,9 +88,9 @@ uv run https://raw.githubusercontent.com/akimchik/paralenz-rendering/main/script
   --output C:\data\media\my_dive.mp4
 ```
 
-## Local Configuration (Using `.env` and `./render`)
+## Local Configuration (Using `.env`)
 
-If you have cloned the repository, you can use the `./render` wrapper script to save time typing long paths. The wrapper reads your `.env` file and passes the paths automatically to the underlying engine.
+The python engine can automatically read your `.env` file, allowing you to omit long paths from your commands.
 
 1. **Copy the template:**
    ```bash
@@ -100,14 +100,14 @@ If you have cloned the repository, you can use the `./render` wrapper script to 
    - `SEARCH_DIR`: Path to your camera's DCIM folder (where `.MP4` files live).
    - `LOGS_DIR`: Path to your dive logs folder (where `.CSV` files live).
 
-### Basic Usage with Wrapper
-Once `.env` is configured, you only need to provide the date!
+### Basic Usage (With `.env` configured)
+Once `.env` is configured, you only need to provide the date! The script will automatically generate the output filename.
 ```bash
-./render -d 2026-06-27
+uv run scripts/build_headless_movie.py --date 2026-06-27
 ```
 
-### Manual Usage (Without Wrapper)
-If you prefer not to use `.env` or the wrapper, you must provide all paths explicitly:
+### Manual Usage (Without `.env`)
+If you prefer not to use `.env`, you must provide all paths explicitly:
 ```bash
 uv run scripts/build_headless_movie.py \
   --date 2026-06-27 \

@@ -49,4 +49,4 @@ jobs:
 
       - name: Run Unit Tests
         run: |
-          uv run --with pandas --with pytest --with pytest-cov pytest -v --cov=scripts --cov-report=term-missing tests/
+          uv run --with pandas --with python-dotenv --with pytest --with pytest-cov pytest -v --cov=scripts --cov-report=term-missing tests/

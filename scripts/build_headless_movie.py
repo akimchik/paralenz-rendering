@@ -2,11 +2,17 @@
 # requires-python = ">=3.10"
 # dependencies = [
 #     "pandas",
+#     "python-dotenv",
 # ]
 # ///
 
 import sys
 import os
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import pandas as pd
@@ -260,9 +266,9 @@ def concatenate_slices(processed, output, temp_dir):
 def main(args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--date", required=True)
-    parser.add_argument("--logs_dir", required=True)
-    parser.add_argument("--media_dir", required=True)
-    parser.add_argument("--output", required=True)
+    parser.add_argument("--logs_dir", required=False, default=os.environ.get("LOGS_DIR"))
+    parser.add_argument("--media_dir", required=False, default=os.environ.get("SEARCH_DIR"))
+    parser.add_argument("--output", required=False)
     parser.add_argument("--mode", choices=['highlights', 'full'], default='full')
     parser.add_argument("--offset", type=int, default=None, help="Force manual offset in seconds.")
     parser.add_argument("--dive_list", type=str, default="", help="Comma-separated list of dive IDs.")
@@ -270,6 +276,18 @@ def main(args=None):
     parser.add_argument("--water", choices=['saltwater', 'freshwater', 'none'], default='saltwater', help="Water type.")
 
     parsed = parser.parse_args(args)
+    
+    if not parsed.logs_dir or not parsed.media_dir:
+        print("Error: --logs_dir and --media_dir are required if LOGS_DIR and SEARCH_DIR are not set in .env")
+        return 1
+        
+    if not parsed.output:
+        base = os.path.join(os.path.expanduser("~"), "Movies", f"dive_{parsed.date}")
+        if parsed.dive_list:
+            base += f"_dive{parsed.dive_list.replace(',', '_')}"
+        if parsed.mode == 'highlights':
+            base += "_highlights"
+        parsed.output = base + ".mp4"
 
     target_dives = parse_dive_list(parsed.dive_list)
 

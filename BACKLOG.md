@@ -42,7 +42,7 @@ Full code review revealed 18 issues. Tasks are split across multiple iterations.
 ## Phase 4: Workflow Improvements (v3.2.0 - v3.3.0)
 - [x] **Experimental Color Grading Optimization:** The current `colorbalance` approach (Filter #1) amplifies red noise in dark underwater shadows (turning caves purple). We need to explore luma-masking or non-linear RGB curves (`curves` filter) to optimize the red filter: making corals brighter without ruining shadows.
 - [x] **Water Type Color Profiles:** Enhance the `--water` argument to support `freshwater` (boosts magenta to counteract green algae instead of pure red).
-- [ ] **Multi-Day Processing:** Upgrade the `./render` wrapper to accept a range of dates (or automatically process all available media dates) in a single run.
+- [ ] **Multi-Day Processing:** Upgrade the `scripts/build_headless_movie.py` entrypoint to accept a range of dates (or automatically process all available media dates) in a single run.
 - [x] **Concurrent Rendering:** Explore using Python's `multiprocessing` to generate highlight slices in parallel before the final FFmpeg concatenation.
 
 ---
