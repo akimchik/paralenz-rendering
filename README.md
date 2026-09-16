@@ -43,9 +43,16 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 Ensure `ffmpeg` and `ffprobe` are installed on your system.
 
 **macOS:**
-```bash
-brew install ffmpeg
-```
+> [!WARNING]
+> The default `brew install ffmpeg` is currently compiled **without** the subtitles filter (`libass`), which will cause the render to fail when building the telemetry HUD. 
+
+To fix this, you must either download a full static build or compile it with `libass` support:
+1. **Download Static Build (Recommended):** Download FFmpeg and FFprobe from [evermeet.cx](https://evermeet.cx/ffmpeg/), unzip them, and place them in `/usr/local/bin` or your `$PATH`.
+2. **Compile via Homebrew:** 
+   ```bash
+   brew tap homebrew-ffmpeg/ffmpeg
+   brew install homebrew-ffmpeg/ffmpeg/ffmpeg --with-libass
+   ```
 
 **Linux:**
 - *Debian/Ubuntu:* `sudo apt-get update && sudo apt-get install -y ffmpeg`
