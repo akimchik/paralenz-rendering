@@ -8,9 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v3.2.1] - 2026-09-16
 
 ### Changed
+- **Cleanup**: Removed obsolete `check-status.py`, `check_videos.py`, and `calc_offset.py` as their functionality is fully integrated into the monolithic `build_headless_movie.py`.
 - **Version Bump**: Corrected outdated documentation versions from v3.1.7.
 
 ### Fixed
+- **CI Pipelines**: Migrated macOS runner dependencies away from `evermeet.cx` to Homebrew and gracefully handle `libass` subtitle filter incompatibilities on GitHub Actions ARM64.
+- **Concurrency Isolation**: Fixed a race condition where parallel script instances (via external tools) would conflict over and prematurely delete the shared `temp_slices_highlights` directory by appending the OS PID to the folder name.
 - **CLI Args**: Added missing `freshwater` choice to the `--water` argparse flag (it was implemented in v3.2.0 but unavailable via CLI).
 
 ### Added
