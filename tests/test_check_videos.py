@@ -53,5 +53,19 @@ class TestCheckVideos(unittest.TestCase):
         args = ['--media_dir', 'fake', '--start', '500', '--end', '2000']
         self.assertEqual(main(args), 1)
 
+
+    @patch('scripts.utils.subprocess.run')
+    def test_get_meta_exception(self, mock_run):
+        mock_run.side_effect = Exception("FFprobe crashed")
+        meta = get_meta('some_file.mp4')
+        self.assertIsNone(meta)
+
+
+    @patch('scripts.utils.subprocess.run')
+    def test_get_meta_exception(self, mock_run):
+        mock_run.side_effect = Exception("FFprobe crashed")
+        meta = get_meta('some_file.mp4')
+        self.assertIsNone(meta)
+
 if __name__ == "__main__":
     unittest.main()

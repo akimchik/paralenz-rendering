@@ -343,7 +343,7 @@ def main(args=None):
         print("\n[INFO MODE] Exiting without rendering.")
         return 0
 
-    temp_dir = os.path.abspath(f"temp_slices_{parsed.mode}")
+    temp_dir = os.path.abspath(f"temp_slices_{parsed.mode}_{parsed.date}_{__import__('os').getpid()}")
     os.makedirs(temp_dir, exist_ok=True)
 
     try:
