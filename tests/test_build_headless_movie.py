@@ -196,5 +196,28 @@ class TestBuildHeadlessMovie(unittest.TestCase):
         except SystemExit as e:
             self.fail(f"argparse rejected 'freshwater', exited with {e}")
             
+
+    @patch('scripts.build_headless_movie.load_and_filter_logs')
+    def test_info_mode(self, mock_load):
+        """Verify that --info flag exits gracefully without rendering."""
+        from scripts.build_headless_movie import main
+        import pandas as pd
+        
+        # Mock some dive data so it passes the first checks
+        df = pd.DataFrame({
+            'ISO8601': ['2026-06-27T10:00:00Z', '2026-06-27T10:01:00Z'],
+            'Time': [1.0, 61.0],
+            'Depth': [2.0, 3.0],
+            'Temperature': [20, 20]
+        })
+        mock_load.return_value = df
+        
+        with patch('scripts.build_headless_movie.discover_videos') as mock_discover:
+            mock_discover.return_value = [{'ts': 0, 'dur': 100, 'width': 3840, 'path': 'fake.MP4'}]
+            
+            # The script should exit with code 0 at the end of the info block
+            ret = main(['--date', '2026-06-27', '--logs_dir', 'l', '--media_dir', 'm', '--info'])
+            self.assertEqual(ret, 0)
+
 if __name__ == "__main__":
     unittest.main()

@@ -9,8 +9,8 @@
 import sys
 import os
 try:
-    from dotenv import load_dotenv
-    load_dotenv()
+    from dotenv import load_dotenv, find_dotenv
+    load_dotenv(find_dotenv(usecwd=True))
 except ImportError:
     pass
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -279,6 +279,7 @@ def main(args=None):
     parser.add_argument("--dive_list", type=str, default="", help="Comma-separated list of dive IDs.")
     parser.add_argument("--gap", type=int, default=1800, help="Seconds of gap to split session.")
     parser.add_argument("--water", choices=['saltwater', 'freshwater', 'none'], default='saltwater', help="Water type.")
+    parser.add_argument("--info", action="store_true", help="Print detected dives and exit without rendering.")
 
     parsed = parser.parse_args(args)
     
@@ -293,6 +294,19 @@ def main(args=None):
         if parsed.mode == 'highlights':
             base += "_highlights"
         parsed.output = base + ".mp4"
+
+    
+    temp_dir_display = os.path.abspath(f"temp_slices_{parsed.mode}")
+    print("\n========================================")
+    print("🎬 PARALENZ HEADLESS RENDERER")
+    print("========================================")
+    print(f"📅 Date:       {parsed.date}")
+    print(f"🌊 Dives:      {parsed.dive_list if parsed.dive_list else 'All detected'}")
+    print(f"🎯 Mode:       {parsed.mode.upper()}")
+    print(f"💧 Water:      {parsed.water.upper()}")
+    print(f"📁 Output:     {parsed.output}")
+    print(f"🛠️  TMP Dir:    {temp_dir_display}")
+    print("========================================\n")
 
     target_dives = parse_dive_list(parsed.dive_list)
 
@@ -324,6 +338,10 @@ def main(args=None):
     if not videos:
         print("Error: No high-res videos found for the target date.")
         return 1
+
+    if parsed.info:
+        print("\n[INFO MODE] Exiting without rendering.")
+        return 0
 
     temp_dir = os.path.abspath(f"temp_slices_{parsed.mode}")
     os.makedirs(temp_dir, exist_ok=True)
