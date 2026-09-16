@@ -63,8 +63,15 @@ def format_srt_time(seconds):
 def get_color_correction_filter(avg_depth, max_depth=30.0, max_boost=0.4, water_type='saltwater'):
     if water_type == 'none' or avg_depth <= 0:
         return ""
-    red_boost = min(avg_depth / max_depth, 1.0) * max_boost
-    return f"colorbalance=rs={red_boost:.3f}:rm={red_boost:.3f}:rh={red_boost:.3f},"
+    
+    boost = min(avg_depth / max_depth, 1.0) * max_boost
+    mid = 0.5 + (boost * 0.75) # Cap the curve bending slightly for natural look
+    
+    if water_type == 'saltwater':
+        return f"curves=r='0/0 0.5/{mid:.3f} 1/1',"
+    elif water_type == 'freshwater':
+        return f"curves=r='0/0 0.5/{mid:.3f} 1/1':b='0/0 0.5/{mid:.3f} 1/1',"
+    return ""
 
 def parse_dive_list(dive_list_str):
     if not dive_list_str:
@@ -124,10 +131,23 @@ def calculate_highlight_windows(dive, d_start, d_end, mode):
         windows.append((d_start - 60, d_end + 60))
     return windows
 
-def build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, in_path, vf, out_path, use_hardware=True):
+def get_best_hardware_encoder(ffmpeg_bin):
+    import subprocess
+    try:
+        res = subprocess.run([ffmpeg_bin, '-encoders'], capture_output=True, text=True, timeout=2)
+        if res.returncode == 0:
+            encoders = res.stdout
+            for enc in ['h264_videotoolbox', 'h264_nvenc', 'h264_qsv', 'h264_amf', 'h264_vaapi']:
+                if enc in encoders:
+                    return enc
+    except Exception:
+        pass
+    return 'libx264'
+
+def build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, in_path, vf, out_path, hw_encoder='h264_videotoolbox'):
     base_cmd = [ffmpeg_bin, '-y', '-ss', str(s_start), '-t', str(s_dur), '-i', in_path, '-vf', vf]
-    if use_hardware:
-        base_cmd.extend(['-c:v', 'h264_videotoolbox', '-b:v', '80M', '-r', '60'])
+    if hw_encoder != 'libx264':
+        base_cmd.extend(['-c:v', hw_encoder, '-b:v', '80M', '-r', '60'])
     else:
         base_cmd.extend(['-c:v', 'libx264', '-crf', '18', '-preset', 'fast', '-r', '60'])
     base_cmd.extend(['-c:a', 'aac', '-b:a', '320k', out_path])
@@ -136,6 +156,8 @@ def build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, in_path, vf, out_path, use_hard
 def build_overlay_slices(dives, videos, calc_offset, temp_dir, mode, target_dives, water_type):
     processed_by_dive = {}
     ffmpeg_bin = get_ffmpeg_path()
+    hw_encoder = get_best_hardware_encoder(ffmpeg_bin)
+    print(f"Using video encoder: {hw_encoder}")
 
     for d_idx, dive in enumerate(dives):
         current_dive_id = d_idx + 1
@@ -185,12 +207,12 @@ def build_overlay_slices(dives, videos, calc_offset, temp_dir, mode, target_dive
 
                     vf_arg = f"{cc_filter}subtitles='{escaped_srt}':force_style='FontSize=5,Alignment=7,BorderStyle=3,Outline=1,Shadow=0,MarginV=15,MarginR=15,FontName=Arial'"
 
-                    cmd = build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, v['path'], vf_arg, out_s, use_hardware=True)
+                    cmd = build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, v['path'], vf_arg, out_s, hw_encoder=hw_encoder)
                     res = run_cmd(cmd)
                     
-                    if res.returncode != 0:
-                        print(f" -> Hardware encoding failed, falling back to software for {os.path.basename(v['path'])}")
-                        cmd = build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, v['path'], vf_arg, out_s, use_hardware=False)
+                    if res.returncode != 0 and hw_encoder != 'libx264':
+                        print(f" -> Hardware encoding ({hw_encoder}) failed, falling back to software for {os.path.basename(v['path'])}")
+                        cmd = build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, v['path'], vf_arg, out_s, hw_encoder='libx264')
                         res = run_cmd(cmd)
 
                     if os.path.exists(out_s):

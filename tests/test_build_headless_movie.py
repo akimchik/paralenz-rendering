@@ -71,10 +71,29 @@ class TestBuildHeadlessMovie(unittest.TestCase):
         self.assertEqual(len(df), 1)
         self.assertEqual(df.iloc[0]['Time'], 1000)
 
+    @patch('subprocess.run')
+    def test_get_best_hardware_encoder_nvenc(self, mock_run):
+        from scripts.build_headless_movie import get_best_hardware_encoder
+        mock_run.return_value = MagicMock(returncode=0, stdout="V....D h264_nvenc")
+        self.assertEqual(get_best_hardware_encoder('ffmpeg'), 'h264_nvenc')
+        
+    @patch('subprocess.run')
+    def test_get_best_hardware_encoder_mac(self, mock_run):
+        from scripts.build_headless_movie import get_best_hardware_encoder
+        mock_run.return_value = MagicMock(returncode=0, stdout="V....D h264_videotoolbox\nV....D h264_nvenc")
+        # Should pick videotoolbox because it's first in the priority list
+        self.assertEqual(get_best_hardware_encoder('ffmpeg'), 'h264_videotoolbox')
+
+    @patch('subprocess.run')
+    def test_get_best_hardware_encoder_fallback(self, mock_run):
+        from scripts.build_headless_movie import get_best_hardware_encoder
+        mock_run.side_effect = Exception("ffmpeg not found")
+        self.assertEqual(get_best_hardware_encoder('ffmpeg'), 'libx264')
+
     def test_get_color_correction_filter(self):
         self.assertEqual(get_color_correction_filter(0), "")
         self.assertEqual(get_color_correction_filter(15.0, water_type='none'), "")
-        self.assertEqual(get_color_correction_filter(30.0), "colorbalance=rs=0.400:rm=0.400:rh=0.400,")
+        self.assertEqual(get_color_correction_filter(30.0), "curves=r='0/0 0.5/0.800 1/1',")
 
     @patch('scripts.build_headless_movie.glob.glob')
     @patch('scripts.build_headless_movie.get_meta')

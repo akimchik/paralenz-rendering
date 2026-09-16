@@ -47,19 +47,22 @@ class TestLogicAccuracy(unittest.TestCase):
         self.assertEqual(len(windows), 5, "Should detect all 5 chapters.")
 
     def test_color_correction_logic(self):
-        """Verify dynamic depth-based color correction correctly scales and caps red channel boost."""
+        """Verify dynamic depth-based color correction correctly scales and caps red channel boost using curves."""
         # Test 0m or water_type='none'
         self.assertEqual(get_color_correction_filter(0.0), "")
         self.assertEqual(get_color_correction_filter(15.0, water_type='none'), "")
 
-        # Test 15m (half max depth) -> 0.200 boost
-        self.assertEqual(get_color_correction_filter(15.0), "colorbalance=rs=0.200:rm=0.200:rh=0.200,")
+        # Test 15m (half max depth) -> boost 0.2, mid = 0.5 + (0.2 * 0.75) = 0.650
+        self.assertEqual(get_color_correction_filter(15.0), "curves=r='0/0 0.5/0.650 1/1',")
 
-        # Test 30m (max depth) -> 0.400 boost
-        self.assertEqual(get_color_correction_filter(30.0), "colorbalance=rs=0.400:rm=0.400:rh=0.400,")
+        # Test 30m (max depth) -> boost 0.4, mid = 0.5 + (0.4 * 0.75) = 0.800
+        self.assertEqual(get_color_correction_filter(30.0), "curves=r='0/0 0.5/0.800 1/1',")
 
-        # Test 40m (should cap at max limits)
-        self.assertEqual(get_color_correction_filter(40.0), "colorbalance=rs=0.400:rm=0.400:rh=0.400,")
+        # Test 40m (should cap at max limits -> mid = 0.800)
+        self.assertEqual(get_color_correction_filter(40.0), "curves=r='0/0 0.5/0.800 1/1',")
+        
+        # Test freshwater 30m -> boost 0.4, mid = 0.800 on red and blue
+        self.assertEqual(get_color_correction_filter(30.0, water_type='freshwater'), "curves=r='0/0 0.5/0.800 1/1':b='0/0 0.5/0.800 1/1',")
 
 if __name__ == "__main__":
     unittest.main()
