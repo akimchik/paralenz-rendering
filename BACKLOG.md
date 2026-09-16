@@ -65,7 +65,7 @@ Post-release audit of v3.2.1 revealed 14 issues. Grouped by priority.
 ### 🟡 Medium (Should fix in same iteration)
 - [ ] **CR-07: Fix `temp_dir_display` banner** — Banner at L299 prints `temp_slices_{mode}` but actual dir created at L346 is `temp_slices_{mode}_{date}_{pid}`. User sees a non-existent path.
 - [ ] **CR-08: Delete duplicated assertion blocks in tests** — `test_build_overlay_slices` and `test_build_overlay_slices_fallback` each have the same 12-line assertion block copy-pasted twice.
-- [ ] **CR-09: Remove `print\(` from `.coveragerc` exclusions** — This silently excludes every `print()` statement from coverage analysis, including actual error handling paths. Coverage numbers are inflated.
+- [ ] **CR-09: Remove `print\(` from `.coveragerc` exclusions** — This silently excludes every `print()` statement from coverage analysis, including actual error handling paths. Coverage numbers are inflated. **Solution:** Extract cosmetic output (banners, progress) into a `_info(msg)` helper marked with `# pragma: no cover`. Keep raw `print()` only for error paths — these must be covered by tests.
 - [ ] **CR-10: Fix freshwater blue channel coefficient** — Red and blue curves use the same `mid` value. Freshwater should use a lower blue boost (e.g., `boost * 0.5`) to avoid unnatural pink tones.
 - [ ] **CR-11: Add `--water` flag coverage in E2E tests** — No E2E test for `freshwater` or `none`. Add at minimum a `--water none` E2E test.
 
