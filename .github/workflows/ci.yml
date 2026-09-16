@@ -27,13 +27,7 @@ jobs:
 
       - name: Set up FFmpeg (macOS)
         if: runner.os == 'macOS'
-        run: |
-          curl -sL -o ffmpeg.zip https://evermeet.cx/ffmpeg/getrelease/zip
-          unzip -q ffmpeg.zip
-          sudo mv ffmpeg /usr/local/bin/
-          curl -sL -o ffprobe.zip https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip
-          unzip -q ffprobe.zip
-          sudo mv ffprobe /usr/local/bin/
+        run: brew install ffmpeg
 
       - name: Set up FFmpeg (Windows)
         if: runner.os == 'Windows'
