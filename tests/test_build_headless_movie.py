@@ -185,5 +185,18 @@ class TestBuildHeadlessMovie(unittest.TestCase):
         args = ['--date', '2026', '--logs_dir', 'l', '--media_dir', 'm', '--output', 'o']
         self.assertEqual(main(args), 1)
 
+
+    @patch('scripts.build_headless_movie.load_and_filter_logs')
+    def test_argparse_water_types(self, mock_load):
+        """Verify that argparse accepts all water types and doesn't exit"""
+        from scripts.build_headless_movie import main
+        mock_load.return_value = __import__('pandas').DataFrame()
+        # If freshwater is invalid, argparse calls sys.exit(2), which raises SystemExit
+        try:
+            main(['--date', '2026', '--logs_dir', 'l', '--media_dir', 'm', '--output', 'o', '--water', 'freshwater'])
+        except SystemExit as e:
+            self.fail(f"argparse rejected 'freshwater', exited with {e}")
+
+
 if __name__ == "__main__":
     unittest.main()

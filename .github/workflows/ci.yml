@@ -37,12 +37,15 @@ jobs:
 
       - name: Set up FFmpeg (Windows)
         if: runner.os == 'Windows'
-        uses: FedericoCarboni/setup-ffmpeg@v3
+        run: choco install ffmpeg -y
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "latest"
+
+      - name: Lint Version Strings
+        run: uv run scripts/check_versions.py
 
       - name: Run Unit Tests
         run: |

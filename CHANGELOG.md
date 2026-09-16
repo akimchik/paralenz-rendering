@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.2.1] - 2026-09-16
+
+### Changed
+- **Version Bump**: Corrected outdated documentation versions from v3.1.7.
+
+### Fixed
+- **CLI Args**: Added missing `freshwater` choice to the `--water` argparse flag (it was implemented in v3.2.0 but unavailable via CLI).
+
+### Added
+- **Concurrent Rendering**: Implemented a `ThreadPoolExecutor` to process slice extraction and filtering in parallel. This fully saturates multi-core CPUs and drastically reduces total highlight generation time.
+
 ## [v3.2.0] - 2026-09-16
 
 ### Added
