@@ -1,4 +1,4 @@
-# Headless Dive Automation (v3.1.7)
+# Headless Dive Automation (v3.2.1)
 
 Automate the creation of 4K 60fps diving movies and highlight reels directly from your camera's DCIM folder, integrated with real-time telemetry data.
 
@@ -103,7 +103,7 @@ If you have cloned the repository, you can execute the engine directly using `uv
 ### Basic Usage (Full Day Render)
 Builds a chronological movie of all the day's dives with a dynamic HUD.
 ```bash
-uv run --with pandas scripts/build_headless_movie.py \
+uv run scripts/build_headless_movie.py \
   --date 2026-06-27 \
   --logs_dir ./data/logs \
   --media_dir ./data/media \
@@ -120,21 +120,21 @@ uv run check-status.py
 
 **1. Generate 5-Chapter Smart Highlights for Dive 1:**
 ```bash
-uv run --with pandas scripts/build_headless_movie.py \
+uv run scripts/build_headless_movie.py \
   --date 2026-06-27 --logs_dir ./data/logs --media_dir ./data/media --output highlights.mp4 \
   --mode highlights --dive_list 1
 ```
 
 **2. Add a custom 2-hour offset if the camera RTC drifted:**
 ```bash
-uv run --with pandas scripts/build_headless_movie.py \
+uv run scripts/build_headless_movie.py \
   --date 2026-06-27 --logs_dir ./data/logs --media_dir ./data/media --output offset_dive.mp4 \
   --offset 7200
 ```
 
 **3. Disable dynamic color correction (if using physical red filters):**
 ```bash
-uv run --with pandas scripts/build_headless_movie.py \
+uv run scripts/build_headless_movie.py \
   --date 2026-06-27 --logs_dir ./data/logs --media_dir ./data/media --output raw_color.mp4 \
   --water none
 ```
@@ -174,5 +174,5 @@ A real-time depth and temperature HUD is injected into the video using dynamic S
 
 ## Professional Standards
 
-- **Testing:** Code without tests is dead code. Testing is mandatory for all new features. Comprehensive unit and integration tests are located in `tests/`. Agents are strictly required to verify their changes locally before committing (`uv run --with pandas -m unittest discover -s tests -v`).
+- **Testing:** Code without tests is dead code. Testing is mandatory for all new features. Comprehensive unit and integration tests are located in `tests/`. Agents are strictly required to verify their changes locally before committing (`uv run --with pandas --with pytest pytest -v tests/`).
 - **Privacy:** Local paths and binary assets are strictly excluded via `.gitignore`.

@@ -14,6 +14,7 @@ import subprocess
 import json
 import glob
 import argparse
+import concurrent.futures
 from datetime import datetime, timezone
 import shutil
 
@@ -153,6 +154,23 @@ def build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, in_path, vf, out_path, hw_encod
     base_cmd.extend(['-c:a', 'aac', '-b:a', '320k', out_path])
     return base_cmd
 
+
+def _process_slice(ffmpeg_bin, s_start, s_dur, v_path, vf_arg, out_s, hw_encoder):
+    cmd = build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, v_path, vf_arg, out_s, hw_encoder=hw_encoder)
+    res = run_cmd(cmd)
+    
+    if res.returncode != 0 and hw_encoder != 'libx264':
+        print(f" -> Hardware encoding ({hw_encoder}) failed, falling back to software for {__import__('os').path.basename(v_path)}")
+        cmd = build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, v_path, vf_arg, out_s, hw_encoder='libx264')
+        res = run_cmd(cmd)
+        
+    if __import__('os').path.exists(out_s):
+        print(f" -> Merged: {__import__('os').path.basename(v_path)} | Extracted {s_dur:.1f}s | Output: {__import__('os').path.basename(out_s)}")
+        return out_s
+    else:
+        print(f" -> Failed to create slice from {__import__('os').path.basename(v_path)}")
+        return None
+
 def build_overlay_slices(dives, videos, calc_offset, temp_dir, mode, target_dives, water_type):
     processed_by_dive = {}
     ffmpeg_bin = get_ffmpeg_path()
@@ -170,6 +188,7 @@ def build_overlay_slices(dives, videos, calc_offset, temp_dir, mode, target_dive
 
         windows = calculate_highlight_windows(dive, d_start, d_end, mode)
 
+        tasks = []
         for win_idx, (w_start, w_end) in enumerate(windows):
             for v in videos:
                 v_start = v['ts'] + calc_offset
@@ -206,20 +225,18 @@ def build_overlay_slices(dives, videos, calc_offset, temp_dir, mode, target_dive
                     cc_filter = get_color_correction_filter(avg_depth, water_type=water_type)
 
                     vf_arg = f"{cc_filter}subtitles=f='{escaped_srt}':force_style='FontSize=5,Alignment=7,BorderStyle=3,Outline=1,Shadow=0,MarginV=15,MarginR=15,FontName=Arial'"
-
-                    cmd = build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, v['path'], vf_arg, out_s, hw_encoder=hw_encoder)
-                    res = run_cmd(cmd)
                     
-                    if res.returncode != 0 and hw_encoder != 'libx264':
-                        print(f" -> Hardware encoding ({hw_encoder}) failed, falling back to software for {os.path.basename(v['path'])}")
-                        cmd = build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, v['path'], vf_arg, out_s, hw_encoder='libx264')
-                        res = run_cmd(cmd)
+                    tasks.append((ffmpeg_bin, s_start, s_dur, v['path'], vf_arg, out_s, hw_encoder))
 
-                    if os.path.exists(out_s):
-                        processed_by_dive[current_dive_id].append(out_s)
-                        print(f" -> Merged: {os.path.basename(v['path'])} | Extracted {s_dur:.1f}s | Output: {os.path.basename(out_s)}")
-                    else:
-                        print(f" -> Failed to create slice from {os.path.basename(v['path'])}")
+        # Execute tasks concurrently
+        if tasks:
+            max_workers = min(len(tasks), (os.cpu_count() or 1) * 2)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = [executor.submit(_process_slice, *task) for task in tasks]
+                for future in futures:
+                    result = future.result()
+                    if result:
+                        processed_by_dive[current_dive_id].append(result)
                         
         if not processed_by_dive[current_dive_id]:
             del processed_by_dive[current_dive_id]
