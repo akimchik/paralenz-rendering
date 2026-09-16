@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.2.0] - 2026-09-16
+
+### Added
+- **Water Type Color Profiles**: Added `--water freshwater` option to optimize color correction for lakes and rivers (boosts magenta to counteract green algae).
+- **Cross-Platform GPU Support**: Introduced dynamic hardware encoder probing (`ffmpeg -encoders`). The script now automatically detects and prioritizes the best available GPU encoder (`h264_videotoolbox`, `h264_nvenc`, `h264_qsv`, `h264_amf`) before falling back to CPU rendering.
+
+### Changed
+- **Color Correction Curves**: Replaced the naive `colorbalance` filter with mathematically precise `curves` for both saltwater and freshwater. This ensures highlights and shadows are anchored, eliminating the "purple caves" artifact in deep shadows while naturally recovering mid-tones based on depth.
+
 ## [v3.1.7] - 2026-09-14
 
 ### Changed

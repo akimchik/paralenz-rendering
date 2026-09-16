@@ -43,9 +43,16 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 Ensure `ffmpeg` and `ffprobe` are installed on your system.
 
 **macOS:**
-```bash
-brew install ffmpeg
-```
+> [!WARNING]
+> The default `brew install ffmpeg` is currently compiled **without** the subtitles filter (`libass`), which will cause the render to fail when building the telemetry HUD. 
+
+To fix this, you must either download a full static build or compile it with `libass` support:
+1. **Download Static Build (Recommended):** Download FFmpeg and FFprobe from [evermeet.cx](https://evermeet.cx/ffmpeg/), unzip them, and place them in `/usr/local/bin` or your `$PATH`.
+2. **Compile via Homebrew:** 
+   ```bash
+   brew tap homebrew-ffmpeg/ffmpeg
+   brew install homebrew-ffmpeg/ffmpeg/ffmpeg --with-libass
+   ```
 
 **Linux:**
 - *Debian/Ubuntu:* `sudo apt-get update && sudo apt-get install -y ffmpeg`
@@ -144,10 +151,10 @@ uv run --with pandas scripts/build_headless_movie.py \
 | `--offset` | No | `0` | Force manual time sync offset in seconds between telemetry and video. |
 | `--dive_list` | No | `""` | Comma-separated list of Dive IDs to render (e.g. `1,3,4`). Processes all if empty. |
 | `--gap` | No | `7200` | Gap threshold in seconds to detect new dives. Default is 2 hours (7200s). |
-| `--water` | No | `saltwater` | **EXPERIMENTAL.** `saltwater` enables dynamic red boost. `none` disables color correction. |
+| `--water` | No | `saltwater` | `saltwater` (boosts red), `freshwater` (boosts magenta), or `none` (disables correction). |
 
 > [!WARNING]
-> The dynamic color correction (`--water saltwater`) is an experimental `colorbalance` filter that restores absorbed red light proportionally to the current dive depth. While it recovers color, it can significantly amplify noise in deep shadows.
+> The dynamic color correction (`--water {saltwater,freshwater,none}`) is an advanced `curves` filter that restores absorbed colors proportionally to the current dive depth. It targets mid-tones to naturally recover colors without amplifying noise in deep shadows.
 
 ## Core Advanced Features
 
