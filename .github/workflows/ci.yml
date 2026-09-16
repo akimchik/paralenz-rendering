@@ -21,17 +21,8 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Set up FFmpeg (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
-      - name: Set up FFmpeg (macOS)
-        if: runner.os == 'macOS'
-        run: brew install ffmpeg
-
-      - name: Set up FFmpeg (Windows)
-        if: runner.os == 'Windows'
-        run: choco install ffmpeg -y
+      - name: Set up FFmpeg
+        uses: FedericoCarboni/setup-ffmpeg@v3
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v10.1.0
