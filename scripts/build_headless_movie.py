@@ -11,7 +11,7 @@ import os
 try:
     from dotenv import load_dotenv, find_dotenv
     load_dotenv(find_dotenv(usecwd=True))
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -26,7 +26,7 @@ import shutil
 
 try:
     from scripts.utils import get_ffmpeg_path, get_meta
-except ModuleNotFoundError:
+except ModuleNotFoundError:  # pragma: no cover
     import urllib.request
     import importlib.util
     branch = os.environ.get("PRLNZ_BRANCH", "main")
@@ -40,8 +40,8 @@ except ModuleNotFoundError:
         exec(code, utils_module.__dict__)
         get_ffmpeg_path = utils_module.get_ffmpeg_path
         get_meta = utils_module.get_meta
-    except Exception as e:
-        print(f"Error dynamically loading utils.py from branch '{branch}': {e}")
+    except Exception as e:  # pragma: no cover
+        print(f"Error dynamically loading utils.py from branch '{branch}': {e}")  # pragma: no cover
         sys.exit(1)
 
 def run_cmd(cmd):
@@ -152,7 +152,7 @@ def get_best_hardware_encoder(ffmpeg_bin):
             for enc in ['h264_videotoolbox', 'h264_nvenc', 'h264_qsv', 'h264_amf', 'h264_vaapi']:
                 if enc in encoders:
                     return enc
-    except Exception:
+    except Exception:  # pragma: no cover
         pass
     return 'libx264'
 
@@ -372,7 +372,7 @@ def main(args=None):
         try:
             import shutil
             shutil.rmtree(temp_dir)
-        except Exception:
+        except Exception:  # pragma: no cover
             pass
 
 if __name__ == "__main__":

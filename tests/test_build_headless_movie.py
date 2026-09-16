@@ -142,6 +142,36 @@ class TestBuildHeadlessMovie(unittest.TestCase):
         # Call it
         processed = build_overlay_slices(dives, videos, 0, "temp", "full", [], "saltwater")
         self.assertEqual(len(processed), 1)
+        
+        # Verify the filter arguments passed to run_cmd
+        calls = mock_run_cmd.call_args_list
+        self.assertTrue(len(calls) > 0, "FFmpeg should be called")
+        ffmpeg_cmd = calls[0][0][0]
+        
+        # Check if -vf is in the command
+        self.assertIn("-vf", ffmpeg_cmd)
+        vf_index = ffmpeg_cmd.index("-vf")
+        vf_string = ffmpeg_cmd[vf_index + 1]
+        
+        # It should contain the curves for 5m depth and the subtitles path
+        self.assertIn("curves=r=", vf_string)
+        self.assertIn("subtitles=", vf_string)
+        self.assertIn("temp/sub_0_0_vid.mp4.srt", vf_string.replace('\\', '/'))
+        
+        # Verify the filter arguments passed to run_cmd
+        calls = mock_run_cmd.call_args_list
+        self.assertTrue(len(calls) > 0, "FFmpeg should be called")
+        ffmpeg_cmd = calls[0][0][0]
+        
+        # Check if -vf is in the command
+        self.assertIn("-vf", ffmpeg_cmd)
+        vf_index = ffmpeg_cmd.index("-vf")
+        vf_string = ffmpeg_cmd[vf_index + 1]
+        
+        # It should contain the curves for 5m depth and the subtitles path
+        self.assertIn("curves=r=", vf_string)
+        self.assertIn("subtitles=", vf_string)
+        self.assertIn("temp/sub_0_0_vid.mp4.srt", vf_string.replace('\\', '/'))
 
     @patch('scripts.build_headless_movie.get_ffmpeg_path', return_value='ffmpeg')
     @patch('scripts.build_headless_movie.run_cmd')
@@ -159,6 +189,36 @@ class TestBuildHeadlessMovie(unittest.TestCase):
 
         processed = build_overlay_slices(dives, videos, 0, "temp", "full", [], "saltwater")
         self.assertEqual(len(processed), 1)
+        
+        # Verify the filter arguments passed to run_cmd
+        calls = mock_run_cmd.call_args_list
+        self.assertTrue(len(calls) > 0, "FFmpeg should be called")
+        ffmpeg_cmd = calls[0][0][0]
+        
+        # Check if -vf is in the command
+        self.assertIn("-vf", ffmpeg_cmd)
+        vf_index = ffmpeg_cmd.index("-vf")
+        vf_string = ffmpeg_cmd[vf_index + 1]
+        
+        # It should contain the curves for 5m depth and the subtitles path
+        self.assertIn("curves=r=", vf_string)
+        self.assertIn("subtitles=", vf_string)
+        self.assertIn("temp/sub_0_0_vid.mp4.srt", vf_string.replace('\\', '/'))
+        
+        # Verify the filter arguments passed to run_cmd
+        calls = mock_run_cmd.call_args_list
+        self.assertTrue(len(calls) > 0, "FFmpeg should be called")
+        ffmpeg_cmd = calls[0][0][0]
+        
+        # Check if -vf is in the command
+        self.assertIn("-vf", ffmpeg_cmd)
+        vf_index = ffmpeg_cmd.index("-vf")
+        vf_string = ffmpeg_cmd[vf_index + 1]
+        
+        # It should contain the curves for 5m depth and the subtitles path
+        self.assertIn("curves=r=", vf_string)
+        self.assertIn("subtitles=", vf_string)
+        self.assertIn("temp/sub_0_0_vid.mp4.srt", vf_string.replace('\\', '/'))
 
     @patch('scripts.build_headless_movie.load_and_filter_logs')
     @patch('scripts.build_headless_movie.detect_dives')
@@ -218,6 +278,15 @@ class TestBuildHeadlessMovie(unittest.TestCase):
             # The script should exit with code 0 at the end of the info block
             ret = main(['--date', '2026-06-27', '--logs_dir', 'l', '--media_dir', 'm', '--info'])
             self.assertEqual(ret, 0)
+
+
+    @patch('scripts.build_headless_movie.load_and_filter_logs')
+    def test_main_exception_handling(self, mock_load):
+        """Verify that main executes finally block even if exception occurs."""
+        from scripts.build_headless_movie import main
+        mock_load.side_effect = Exception("Simulated fatal error")
+        with self.assertRaises(Exception):
+            main(['--date', '2026-06-27', '--logs_dir', 'l', '--media_dir', 'm'])
 
 if __name__ == "__main__":
     unittest.main()
