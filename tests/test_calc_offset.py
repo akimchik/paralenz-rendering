@@ -73,5 +73,19 @@ class TestCalcOffset(unittest.TestCase):
         args = ['--logs_dir', 'fake', '--media_dir', 'fake', '--date', '2026']
         self.assertEqual(main(args), 1)
 
+
+    @patch('scripts.utils.subprocess.run')
+    def test_get_meta_exception(self, mock_run):
+        mock_run.side_effect = Exception("FFprobe crashed")
+        meta = get_meta('some_file.mp4')
+        self.assertIsNone(meta)
+
+
+    @patch('scripts.utils.subprocess.run')
+    def test_get_meta_exception(self, mock_run):
+        mock_run.side_effect = Exception("FFprobe crashed")
+        meta = get_meta('some_file.mp4')
+        self.assertIsNone(meta)
+
 if __name__ == "__main__":
     unittest.main()

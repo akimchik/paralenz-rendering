@@ -142,6 +142,36 @@ class TestBuildHeadlessMovie(unittest.TestCase):
         # Call it
         processed = build_overlay_slices(dives, videos, 0, "temp", "full", [], "saltwater")
         self.assertEqual(len(processed), 1)
+        
+        # Verify the filter arguments passed to run_cmd
+        calls = mock_run_cmd.call_args_list
+        self.assertTrue(len(calls) > 0, "FFmpeg should be called")
+        ffmpeg_cmd = calls[0][0][0]
+        
+        # Check if -vf is in the command
+        self.assertIn("-vf", ffmpeg_cmd)
+        vf_index = ffmpeg_cmd.index("-vf")
+        vf_string = ffmpeg_cmd[vf_index + 1]
+        
+        # It should contain the curves for 5m depth and the subtitles path
+        self.assertIn("curves=r=", vf_string)
+        self.assertIn("subtitles=", vf_string)
+        self.assertIn("temp/sub_0_0_vid.mp4.srt", vf_string.replace('\\', '/'))
+        
+        # Verify the filter arguments passed to run_cmd
+        calls = mock_run_cmd.call_args_list
+        self.assertTrue(len(calls) > 0, "FFmpeg should be called")
+        ffmpeg_cmd = calls[0][0][0]
+        
+        # Check if -vf is in the command
+        self.assertIn("-vf", ffmpeg_cmd)
+        vf_index = ffmpeg_cmd.index("-vf")
+        vf_string = ffmpeg_cmd[vf_index + 1]
+        
+        # It should contain the curves for 5m depth and the subtitles path
+        self.assertIn("curves=r=", vf_string)
+        self.assertIn("subtitles=", vf_string)
+        self.assertIn("temp/sub_0_0_vid.mp4.srt", vf_string.replace('\\', '/'))
 
     @patch('scripts.build_headless_movie.get_ffmpeg_path', return_value='ffmpeg')
     @patch('scripts.build_headless_movie.run_cmd')
@@ -159,6 +189,36 @@ class TestBuildHeadlessMovie(unittest.TestCase):
 
         processed = build_overlay_slices(dives, videos, 0, "temp", "full", [], "saltwater")
         self.assertEqual(len(processed), 1)
+        
+        # Verify the filter arguments passed to run_cmd
+        calls = mock_run_cmd.call_args_list
+        self.assertTrue(len(calls) > 0, "FFmpeg should be called")
+        ffmpeg_cmd = calls[0][0][0]
+        
+        # Check if -vf is in the command
+        self.assertIn("-vf", ffmpeg_cmd)
+        vf_index = ffmpeg_cmd.index("-vf")
+        vf_string = ffmpeg_cmd[vf_index + 1]
+        
+        # It should contain the curves for 5m depth and the subtitles path
+        self.assertIn("curves=r=", vf_string)
+        self.assertIn("subtitles=", vf_string)
+        self.assertIn("temp/sub_0_0_vid.mp4.srt", vf_string.replace('\\', '/'))
+        
+        # Verify the filter arguments passed to run_cmd
+        calls = mock_run_cmd.call_args_list
+        self.assertTrue(len(calls) > 0, "FFmpeg should be called")
+        ffmpeg_cmd = calls[0][0][0]
+        
+        # Check if -vf is in the command
+        self.assertIn("-vf", ffmpeg_cmd)
+        vf_index = ffmpeg_cmd.index("-vf")
+        vf_string = ffmpeg_cmd[vf_index + 1]
+        
+        # It should contain the curves for 5m depth and the subtitles path
+        self.assertIn("curves=r=", vf_string)
+        self.assertIn("subtitles=", vf_string)
+        self.assertIn("temp/sub_0_0_vid.mp4.srt", vf_string.replace('\\', '/'))
 
     @patch('scripts.build_headless_movie.load_and_filter_logs')
     @patch('scripts.build_headless_movie.detect_dives')
@@ -184,6 +244,49 @@ class TestBuildHeadlessMovie(unittest.TestCase):
         mock_load.return_value = pd.DataFrame()
         args = ['--date', '2026', '--logs_dir', 'l', '--media_dir', 'm', '--output', 'o']
         self.assertEqual(main(args), 1)
+
+
+    @patch('scripts.build_headless_movie.load_and_filter_logs')
+    def test_argparse_water_types(self, mock_load):
+        """Verify that argparse accepts all water types and doesn't exit"""
+        from scripts.build_headless_movie import main
+        mock_load.return_value = __import__('pandas').DataFrame()
+        try:
+            main(['--date', '2026', '--logs_dir', 'l', '--media_dir', 'm', '--output', 'o', '--water', 'freshwater'])
+        except SystemExit as e:
+            self.fail(f"argparse rejected 'freshwater', exited with {e}")
+            
+
+    @patch('scripts.build_headless_movie.load_and_filter_logs')
+    def test_info_mode(self, mock_load):
+        """Verify that --info flag exits gracefully without rendering."""
+        from scripts.build_headless_movie import main
+        import pandas as pd
+        
+        # Mock some dive data so it passes the first checks
+        df = pd.DataFrame({
+            'ISO8601': ['2026-06-27T10:00:00Z', '2026-06-27T10:01:00Z'],
+            'Time': [1.0, 61.0],
+            'Depth': [2.0, 3.0],
+            'Temperature': [20, 20]
+        })
+        mock_load.return_value = df
+        
+        with patch('scripts.build_headless_movie.discover_videos') as mock_discover:
+            mock_discover.return_value = [{'ts': 0, 'dur': 100, 'width': 3840, 'path': 'fake.MP4'}]
+            
+            # The script should exit with code 0 at the end of the info block
+            ret = main(['--date', '2026-06-27', '--logs_dir', 'l', '--media_dir', 'm', '--info'])
+            self.assertEqual(ret, 0)
+
+
+    @patch('scripts.build_headless_movie.load_and_filter_logs')
+    def test_main_exception_handling(self, mock_load):
+        """Verify that main executes finally block even if exception occurs."""
+        from scripts.build_headless_movie import main
+        mock_load.side_effect = Exception("Simulated fatal error")
+        with self.assertRaises(Exception):
+            main(['--date', '2026-06-27', '--logs_dir', 'l', '--media_dir', 'm'])
 
 if __name__ == "__main__":
     unittest.main()

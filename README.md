@@ -1,4 +1,4 @@
-# Headless Dive Automation (v3.1.7)
+# Headless Dive Automation (v3.2.1)
 
 Automate the creation of 4K 60fps diving movies and highlight reels directly from your camera's DCIM folder, integrated with real-time telemetry data.
 
@@ -88,9 +88,9 @@ uv run https://raw.githubusercontent.com/akimchik/paralenz-rendering/main/script
   --output C:\data\media\my_dive.mp4
 ```
 
-## Local Configuration
+## Local Configuration (Using `.env`)
 
-If you have cloned the repository, you can execute the engine directly using `uv run`. This handles the `pandas` dependency automatically and provides full access to the CLI flags.
+The python engine can automatically read your `.env` file, allowing you to omit long paths from your commands.
 
 1. **Copy the template:**
    ```bash
@@ -100,10 +100,16 @@ If you have cloned the repository, you can execute the engine directly using `uv
    - `SEARCH_DIR`: Path to your camera's DCIM folder (where `.MP4` files live).
    - `LOGS_DIR`: Path to your dive logs folder (where `.CSV` files live).
 
-### Basic Usage (Full Day Render)
-Builds a chronological movie of all the day's dives with a dynamic HUD.
+### Basic Usage (With `.env` configured)
+Once `.env` is configured, you only need to provide the date! The script will automatically generate the output filename.
 ```bash
-uv run --with pandas scripts/build_headless_movie.py \
+uv run scripts/build_headless_movie.py --date 2026-06-27
+```
+
+### Manual Usage (Without `.env`)
+If you prefer not to use `.env`, you must provide all paths explicitly:
+```bash
+uv run scripts/build_headless_movie.py \
   --date 2026-06-27 \
   --logs_dir ./data/logs \
   --media_dir ./data/media \
@@ -120,21 +126,21 @@ uv run check-status.py
 
 **1. Generate 5-Chapter Smart Highlights for Dive 1:**
 ```bash
-uv run --with pandas scripts/build_headless_movie.py \
+uv run scripts/build_headless_movie.py \
   --date 2026-06-27 --logs_dir ./data/logs --media_dir ./data/media --output highlights.mp4 \
   --mode highlights --dive_list 1
 ```
 
 **2. Add a custom 2-hour offset if the camera RTC drifted:**
 ```bash
-uv run --with pandas scripts/build_headless_movie.py \
+uv run scripts/build_headless_movie.py \
   --date 2026-06-27 --logs_dir ./data/logs --media_dir ./data/media --output offset_dive.mp4 \
   --offset 7200
 ```
 
 **3. Disable dynamic color correction (if using physical red filters):**
 ```bash
-uv run --with pandas scripts/build_headless_movie.py \
+uv run scripts/build_headless_movie.py \
   --date 2026-06-27 --logs_dir ./data/logs --media_dir ./data/media --output raw_color.mp4 \
   --water none
 ```
@@ -150,7 +156,7 @@ uv run --with pandas scripts/build_headless_movie.py \
 | `--mode` | No | `full` | `full` (renders entire sessions) or `highlights` (5-chapter smart slices). |
 | `--offset` | No | `0` | Force manual time sync offset in seconds between telemetry and video. |
 | `--dive_list` | No | `""` | Comma-separated list of Dive IDs to render (e.g. `1,3,4`). Processes all if empty. |
-| `--gap` | No | `7200` | Gap threshold in seconds to detect new dives. Default is 2 hours (7200s). |
+| `--gap` | No | `1800` | Gap threshold in seconds to detect new dives. Default is 30 mins (1800s). |
 | `--water` | No | `saltwater` | `saltwater` (boosts red), `freshwater` (boosts magenta), or `none` (disables correction). |
 
 > [!WARNING]
@@ -159,12 +165,12 @@ uv run --with pandas scripts/build_headless_movie.py \
 ## Core Advanced Features
 
 ### Global Multi-Dive Support
-The system automatically detects multiple dives in your logs using a configurable gap (default: 2 hours). It correlates each video clip to the correct dive using its recording timestamp.
+The system automatically detects multiple dives in your logs using a configurable gap (default: 30 mins). It correlates each video clip to the correct dive using its recording timestamp.
 - **Auto-Sync:** If you have 3 dives in one day, the script will generate 3 separate HUD profiles and sync the correct data to the correct footage automatically.
 - **Session Detection:** It identifies gaps in activity to separate "Dives" from "Surface intervals."
 
 > [!TIP]
-> The default gap is `7200` seconds (2 hours) to accommodate very long surface intervals. If you need tighter split thresholds, pass a lower value using `--gap`.
+> The default gap is `1800` seconds (30 mins) to accommodate very long surface intervals. If you need tighter split thresholds, pass a lower value using `--gap`.
 
 ### Dynamic HUD
 A real-time depth and temperature HUD is injected into the video using dynamic SubRip (`.srt`) subtitle generation.
@@ -174,5 +180,5 @@ A real-time depth and temperature HUD is injected into the video using dynamic S
 
 ## Professional Standards
 
-- **Testing:** Code without tests is dead code. Testing is mandatory for all new features. Comprehensive unit and integration tests are located in `tests/`. Agents are strictly required to verify their changes locally before committing (`uv run --with pandas -m unittest discover -s tests -v`).
+- **Testing:** Code without tests is dead code. Testing is mandatory for all new features. Comprehensive unit and integration tests are located in `tests/`. Agents are strictly required to verify their changes locally before committing (`uv run --with pandas --with pytest pytest -v tests/`).
 - **Privacy:** Local paths and binary assets are strictly excluded via `.gitignore`.

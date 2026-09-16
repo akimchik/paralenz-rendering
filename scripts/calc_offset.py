@@ -30,7 +30,7 @@ def calculate_time_drift(logs_dir, media_dir, date):
     if df.empty:
         return None, f"No logs matching date {date} found"
 
-    df['session'] = (df['Time'].diff() > 7200).cumsum()
+    df['session'] = (df['Time'].diff() > 1800).cumsum()
     dives = [g for _, g in df.groupby('session') if g['Depth'].max() > 1.0]
 
     if not dives:

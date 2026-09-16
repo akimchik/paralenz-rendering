@@ -35,7 +35,7 @@ def get_meta(file_path: str, min_width: int = 0, basename_only: bool = False):
             '-show_entries', 'format_tags=creation_time:format=duration:stream=width,height',
             '-of', 'json', file_path
         ]
-        res = subprocess.run(cmd, capture_output=True, text=True)
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
         if res.returncode != 0:
             return None
 
@@ -55,6 +55,6 @@ def get_meta(file_path: str, min_width: int = 0, basename_only: bool = False):
             dt = datetime.strptime(ts[:19], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=timezone.utc)
             path_val = os.path.basename(file_path) if basename_only else file_path
             return {'ts': dt.timestamp(), 'dur': dur, 'width': width, 'path': path_val}
-    except Exception as e:
-        print(f"Error parsing metadata for {file_path}: {e}")
+    except Exception as e:  # pragma: no cover
+        print(f"Error parsing metadata for {file_path}: {e}")  # pragma: no cover
     return None

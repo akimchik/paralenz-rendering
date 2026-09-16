@@ -11,7 +11,16 @@ from contextlib import redirect_stdout, redirect_stderr
 
 from scripts.build_headless_movie import main
 
+def check_ffmpeg_has_subtitles():
+    try:
+        from scripts.utils import get_ffmpeg_path
+        res = subprocess.run([get_ffmpeg_path(), "-filters"], capture_output=True, text=True)
+        return "subtitles" in res.stdout
+    except Exception:
+        return False
+
 @unittest.skipIf(not shutil.which("ffmpeg"), "FFmpeg is required for E2E tests")
+@unittest.skipIf(not check_ffmpeg_has_subtitles(), "FFmpeg binary lacks 'subtitles' (libass) filter")
 class TestHeadlessEngine(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
