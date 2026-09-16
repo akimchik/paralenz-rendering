@@ -104,10 +104,15 @@ def detect_dives(df, gap):
 
 def discover_videos(media_dir):
     videos = []
-    for f in glob.glob(os.path.join(media_dir, "*.MP4")):
-        m = get_meta(f, min_width=3000)
-        if m:
-            videos.append(m)
+    mp4_files = glob.glob(os.path.join(media_dir, "*.MP4"))
+    print(f"Found {len(mp4_files)} .MP4 files. Reading metadata...")
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(16, (os.cpu_count() or 4) * 2)) as executor:
+        results = executor.map(lambda f: get_meta(f, min_width=3000), mp4_files)
+        for m in results:
+            if m:
+                videos.append(m)
+                
     videos.sort(key=lambda x: x['ts'])
     return videos
 

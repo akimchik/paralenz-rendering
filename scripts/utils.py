@@ -35,7 +35,7 @@ def get_meta(file_path: str, min_width: int = 0, basename_only: bool = False):
             '-show_entries', 'format_tags=creation_time:format=duration:stream=width,height',
             '-of', 'json', file_path
         ]
-        res = subprocess.run(cmd, capture_output=True, text=True)
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
         if res.returncode != 0:
             return None
 
