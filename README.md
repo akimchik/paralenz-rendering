@@ -116,11 +116,6 @@ uv run scripts/build_headless_movie.py \
   --output my_dive.mp4
 ```
 
-### Monitoring Progress
-To check the real-time status of an ongoing render, run the included status checker. It must be run using `uv` to automatically handle dependencies:
-```bash
-uv run check-status.py
-```
 
 ### Advanced Execution Examples
 

@@ -8,6 +8,13 @@
 
 import sys
 import os
+import shutil
+import concurrent.futures
+import argparse
+import glob
+import datetime
+import subprocess
+
 try:
     from dotenv import load_dotenv, find_dotenv
     load_dotenv(find_dotenv(usecwd=True))
@@ -16,13 +23,7 @@ except ImportError:  # pragma: no cover
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import pandas as pd
-import subprocess
-import json
-import glob
-import argparse
-import concurrent.futures
-from datetime import datetime, timezone
-import shutil
+from datetime import timezone
 
 try:
     from scripts.utils import get_ffmpeg_path, get_meta
@@ -41,7 +42,7 @@ except ModuleNotFoundError:  # pragma: no cover
         get_ffmpeg_path = utils_module.get_ffmpeg_path
         get_meta = utils_module.get_meta
     except Exception as e:  # pragma: no cover
-        print(f"Error dynamically loading utils.py from branch '{branch}': {e}")  # pragma: no cover
+        print(f"Error dynamically loading utils.py from branch '{branch}': {e}")
         sys.exit(1)
 
 def run_cmd(cmd):
@@ -51,13 +52,16 @@ def run_cmd(cmd):
         print(f"Stderr: {result.stderr}")
     return result
 
+def _info(msg): # pragma: no cover
+    print(msg)
+
 def format_srt_time(seconds):
     h = int(seconds // 3600)
     m = int((seconds % 3600) // 60)
     s = int(seconds % 60)
     ms = round((seconds - int(seconds)) * 1000)
-    if ms == 1000:
-        ms = 0
+    if ms >= 1000:
+        ms -= 1000
         s += 1
         if s == 60:
             s = 0
@@ -67,17 +71,11 @@ def format_srt_time(seconds):
                 h += 1
     return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
-def get_color_correction_filter(avg_depth, max_depth=30.0, max_boost=0.4, water_type='saltwater'):
-    if water_type == 'none' or avg_depth <= 0:
-        return ""
-    
-    boost = min(avg_depth / max_depth, 1.0) * max_boost
-    mid = 0.5 + (boost * 0.75) # Cap the curve bending slightly for natural look
-    
+def get_color_correction_filter(water_type='saltwater'):
     if water_type == 'saltwater':
-        return f"curves=r='0/0 0.5/{mid:.3f} 1/1',"
+        return "curves=r='0/0 0.5/0.58 1/1':b='0/0 0.5/0.45 1/1',"
     elif water_type == 'freshwater':
-        return f"curves=r='0/0 0.5/{mid:.3f} 1/1':b='0/0 0.5/{mid:.3f} 1/1',"
+        return "curves=r='0/0 0.5/0.55 1/1':g='0/0 0.5/0.45 1/1',"
     return ""
 
 def parse_dive_list(dive_list_str):
@@ -105,7 +103,7 @@ def detect_dives(df, gap):
 def discover_videos(media_dir):
     videos = []
     mp4_files = glob.glob(os.path.join(media_dir, "*.MP4"))
-    print(f"Found {len(mp4_files)} .MP4 files. Reading metadata...")
+    _info(f"Found {len(mp4_files)} .MP4 files. Reading metadata...")
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=min(16, (os.cpu_count() or 4) * 2)) as executor:
         results = executor.map(lambda f: get_meta(f, min_width=3000), mp4_files)
@@ -144,16 +142,18 @@ def calculate_highlight_windows(dive, d_start, d_end, mode):
     return windows
 
 def get_best_hardware_encoder(ffmpeg_bin):
-    import subprocess
-    try:
-        res = subprocess.run([ffmpeg_bin, '-encoders'], capture_output=True, text=True, timeout=2)
-        if res.returncode == 0:
-            encoders = res.stdout
-            for enc in ['h264_videotoolbox', 'h264_nvenc', 'h264_qsv', 'h264_amf', 'h264_vaapi']:
-                if enc in encoders:
-                    return enc
-    except Exception:  # pragma: no cover
-        pass
+    """Finds the best hardware encoder actually supported by the current system."""
+    for enc in ['h264_videotoolbox', 'h264_nvenc', 'h264_qsv', 'h264_amf', 'h264_vaapi']:
+        try:
+            cmd = [
+                ffmpeg_bin, '-v', 'error', '-y', '-f', 'lavfi', 
+                '-i', 'color=size=1920x1080:rate=1:duration=0.1',
+                '-c:v', enc, '-f', 'null', '-'
+            ]
+            if subprocess.run(cmd, capture_output=True, timeout=2).returncode == 0:
+                return enc
+        except Exception:  # pragma: no cover
+            continue
     return 'libx264'
 
 def build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, in_path, vf, out_path, hw_encoder='h264_videotoolbox'):
@@ -165,42 +165,16 @@ def build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, in_path, vf, out_path, hw_encod
     base_cmd.extend(['-c:a', 'aac', '-b:a', '320k', out_path])
     return base_cmd
 
-
-def _process_slice(ffmpeg_bin, s_start, s_dur, v_path, vf_arg, out_s, hw_encoder):
-    cmd = build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, v_path, vf_arg, out_s, hw_encoder=hw_encoder)
-    res = run_cmd(cmd)
+def process_dive(dive_id, dive, windows, videos, calc_offset, temp_dir, output_file, water_type, ffmpeg_bin, hw_encoder):
+    list_path = os.path.join(temp_dir, f"list_{dive_id}.txt")
+    srt_path = os.path.join(temp_dir, f"sub_{dive_id}.srt")
     
-    if res.returncode != 0 and hw_encoder != 'libx264':
-        print(f" -> Hardware encoding ({hw_encoder}) failed, falling back to software for {__import__('os').path.basename(v_path)}")
-        cmd = build_ffmpeg_cmd(ffmpeg_bin, s_start, s_dur, v_path, vf_arg, out_s, hw_encoder='libx264')
-        res = run_cmd(cmd)
-        
-    if __import__('os').path.exists(out_s):
-        print(f" -> Merged: {__import__('os').path.basename(v_path)} | Extracted {s_dur:.1f}s | Output: {__import__('os').path.basename(out_s)}")
-        return out_s
-    else:
-        print(f" -> Failed to create slice from {__import__('os').path.basename(v_path)}")
-        return None
+    current_virtual_time = 0.0
+    srt_idx = 1
+    has_clips = False
 
-def build_overlay_slices(dives, videos, calc_offset, temp_dir, mode, target_dives, water_type):
-    processed_by_dive = {}
-    ffmpeg_bin = get_ffmpeg_path()
-    hw_encoder = get_best_hardware_encoder(ffmpeg_bin)
-    print(f"Using video encoder: {hw_encoder}")
-
-    for d_idx, dive in enumerate(dives):
-        current_dive_id = d_idx + 1
-        if target_dives and current_dive_id not in target_dives:
-            continue
-
-        processed_by_dive[current_dive_id] = []
-        d_start, d_end = dive['Time'].min(), dive['Time'].max()
-        print(f"Processing Dive #{current_dive_id}: {d_start} to {d_end}")
-
-        windows = calculate_highlight_windows(dive, d_start, d_end, mode)
-
-        tasks = []
-        for win_idx, (w_start, w_end) in enumerate(windows):
+    with open(list_path, 'w') as f_list, open(srt_path, 'w') as f_srt:
+        for (w_start, w_end) in windows:
             for v in videos:
                 v_start = v['ts'] + calc_offset
                 v_end = v_start + v['dur']
@@ -209,64 +183,60 @@ def build_overlay_slices(dives, videos, calc_offset, temp_dir, mode, target_dive
                 overlap_end = min(w_end, v_end)
 
                 if overlap_start < overlap_end:
+                    has_clips = True
                     s_start = overlap_start - v_start
                     s_dur = overlap_end - overlap_start
-                    out_s = os.path.join(temp_dir, f"s_{d_idx}_{win_idx}_{os.path.basename(v['path'])}")
-                    srt_path = os.path.join(temp_dir, f"sub_{d_idx}_{win_idx}_{os.path.basename(v['path'])}.srt")
-
-                    slice_df = dive[(dive['Time'] >= overlap_start) & (dive['Time'] <= overlap_end)]
-                    with open(srt_path, 'w') as f_srt:
-                        for idx_s in range(len(slice_df)):
-                            row = slice_df.iloc[idx_s]
-                            rel_t = row['Time'] - overlap_start
-                            rel_t = max(0, rel_t)
-
-                            if idx_s + 1 < len(slice_df):
-                                next_rel_t = slice_df.iloc[idx_s+1]['Time'] - overlap_start
-                                end_t = min(next_rel_t, s_dur)
-                            else:
-                                end_t = min(rel_t + 1.0, s_dur)
-
-                            f_srt.write(f"{idx_s+1}\n")
-                            f_srt.write(f"{format_srt_time(rel_t)} --> {format_srt_time(end_t)}\n")
-                            f_srt.write(f"Depth: {row['Depth']}m | Temp: {row['Temperature']}C\n\n")
-
-                    escaped_srt = __import__('os').path.relpath(srt_path).replace('\\', '/')
-                    avg_depth = slice_df['Depth'].mean() if not slice_df.empty else 0.0
-                    cc_filter = get_color_correction_filter(avg_depth, water_type=water_type)
-
-                    vf_arg = f"{cc_filter}subtitles=f='{escaped_srt}':force_style='FontSize=5,Alignment=7,BorderStyle=3,Outline=1,Shadow=0,MarginV=15,MarginR=15,FontName=Arial'"
                     
-                    tasks.append((ffmpeg_bin, s_start, s_dur, v['path'], vf_arg, out_s, hw_encoder))
+                    # Avoid escaping issues with absolute paths in concat file
+                    safe_vpath = v['path'].replace("'", "'\\''")
+                    f_list.write(f"file '{safe_vpath}'\n")
+                    f_list.write(f"inpoint {s_start:.3f}\n")
+                    f_list.write(f"outpoint {(s_start + s_dur):.3f}\n")
+                    
+                    slice_df = dive[(dive['Time'] >= overlap_start) & (dive['Time'] <= overlap_end)]
+                    for idx_s in range(len(slice_df)):
+                        row = slice_df.iloc[idx_s]
+                        rel_t = row['Time'] - overlap_start
+                        rel_t = max(0, rel_t)
 
-        # Execute tasks concurrently
-        if tasks:
-            max_workers = min(len(tasks), max(1, (os.cpu_count() or 4) // 2))  # Limit to avoid choking the hardware encoder/RAM
-            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = [executor.submit(_process_slice, *task) for task in tasks]
-                for future in futures:
-                    result = future.result()
-                    if result:
-                        processed_by_dive[current_dive_id].append(result)
+                        if idx_s + 1 < len(slice_df):
+                            next_rel_t = slice_df.iloc[idx_s+1]['Time'] - overlap_start
+                            end_t = min(next_rel_t, s_dur)
+                        else:
+                            end_t = min(rel_t + 1.0, s_dur)
+
+                        f_srt.write(f"{srt_idx}\n")
+                        f_srt.write(f"{format_srt_time(current_virtual_time + rel_t)} --> {format_srt_time(current_virtual_time + end_t)}\n")
+                        f_srt.write(f"Depth: {row['Depth']}m | Temp: {row['Temperature']}C\n\n")
+                        srt_idx += 1
                         
-        if not processed_by_dive[current_dive_id]:
-            del processed_by_dive[current_dive_id]
-            
-    return processed_by_dive
+                    current_virtual_time += s_dur
 
-def concatenate_slices(processed, output, temp_dir):
-    if not processed:
+    if not has_clips:
         return False
 
-    list_path = os.path.join(temp_dir, "list.txt")
-    with open(list_path, 'w') as f:
-        for p in processed:
-            f.write(f"file '{p}'\n")
+    escaped_srt = os.path.relpath(srt_path).replace('\\', '/')
+    cc_filter = get_color_correction_filter(water_type=water_type)
+    
+    # Properly format the subtitles string
+    # Replace literal colons in escaped_srt path with \\: for ffmpeg
+    escaped_srt = escaped_srt.replace(':', '\\\\:')
+    
+    vf_arg = f"{cc_filter}subtitles=f='{escaped_srt}':force_style='FontSize=5,Alignment=7,BorderStyle=3,Outline=1,Shadow=0,MarginV=15,MarginR=15,FontName=Arial'"
 
-    final_cmd = [get_ffmpeg_path(), '-y', '-f', 'concat', '-safe', '0', '-i', list_path, '-c', 'copy', '-movflags', '+faststart', os.path.abspath(output)]
-    res = run_cmd(final_cmd)
-
-    return res.returncode == 0 and os.path.exists(output)
+    cmd = [
+        ffmpeg_bin, '-y',
+        '-f', 'concat', '-safe', '0', '-i', list_path,
+        '-vf', vf_arg,
+        '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'pc',
+        '-c:v', hw_encoder, '-b:v', '80M', '-r', '60',
+        '-c:a', 'aac', '-b:a', '320k',
+        '-movflags', '+faststart',
+        os.path.abspath(output_file)
+    ]
+    
+    res = run_cmd(cmd)
+    return res.returncode == 0 and os.path.exists(output_file)
 
 def main(args=None):
     parser = argparse.ArgumentParser()
@@ -278,7 +248,7 @@ def main(args=None):
     parser.add_argument("--offset", type=int, default=None, help="Force manual offset in seconds.")
     parser.add_argument("--dive_list", type=str, default="", help="Comma-separated list of dive IDs.")
     parser.add_argument("--gap", type=int, default=1800, help="Seconds of gap to split session.")
-    parser.add_argument("--water", choices=['saltwater', 'freshwater', 'none'], default='saltwater', help="Water type.")
+    parser.add_argument("--water", choices=['saltwater', 'freshwater', 'none'], default='none', help="Water type.")
     parser.add_argument("--info", action="store_true", help="Print detected dives and exit without rendering.")
 
     parsed = parser.parse_args(args)
@@ -295,18 +265,18 @@ def main(args=None):
             base += "_highlights"
         parsed.output = base + ".mp4"
 
-    
-    temp_dir_display = os.path.abspath(f"temp_slices_{parsed.mode}")
-    print("\n========================================")
-    print("🎬 PARALENZ HEADLESS RENDERER")
-    print("========================================")
-    print(f"📅 Date:       {parsed.date}")
-    print(f"🌊 Dives:      {parsed.dive_list if parsed.dive_list else 'All detected'}")
-    print(f"🎯 Mode:       {parsed.mode.upper()}")
-    print(f"💧 Water:      {parsed.water.upper()}")
-    print(f"📁 Output:     {parsed.output}")
-    print(f"🛠️  TMP Dir:    {temp_dir_display}")
-    print("========================================\n")
+    temp_dir_name = f"temp_slices_{parsed.mode}_{parsed.date}_{os.getpid()}"
+    temp_dir_display = os.path.abspath(temp_dir_name)
+    _info("\n========================================")
+    _info("🎬 PARALENZ HEADLESS RENDERER")
+    _info("========================================")
+    _info(f"📅 Date:       {parsed.date}")
+    _info(f"🌊 Dives:      {parsed.dive_list if parsed.dive_list else 'All detected'}")
+    _info(f"🎯 Mode:       {parsed.mode.upper()}")
+    _info(f"💧 Water:      {parsed.water.upper()}")
+    _info(f"📁 Output:     {parsed.output}")
+    _info(f"🛠️  TMP Dir:    {temp_dir_display}")
+    _info("========================================\n")
 
     target_dives = parse_dive_list(parsed.dive_list)
 
@@ -316,65 +286,78 @@ def main(args=None):
         return 1
 
     dives = detect_dives(df, parsed.gap)
-    print(f"Detected Dives: {len(dives)}")
+    _info(f"Detected Dives: {len(dives)}")
     if not dives:
         print("Error: No valid dives detected in telemetry.")
         return 1
 
     videos = discover_videos(parsed.media_dir)
-    print(f"Indexed High-Res Videos (all): {len(videos)}")
+    _info(f"Indexed High-Res Videos (all): {len(videos)}")
 
     calc_offset = parsed.offset if parsed.offset is not None else 0
     if parsed.offset is not None:
-        print(f"Using manual offset: {calc_offset}s")
+        _info(f"Using manual offset: {calc_offset}s")
     else:
-        print("Using default zero-offset (Camera RTC Sync).")
+        _info("Using default zero-offset (Camera RTC Sync).")
 
     day_start = dives[0]['Time'].min() - 43200
     day_end = dives[-1]['Time'].max() + 43200
     videos = [v for v in videos if (v['ts'] + calc_offset) >= day_start and (v['ts'] + calc_offset) <= day_end]
-    print(f"Filtered to target date: {len(videos)} video(s)")
+    _info(f"Filtered to target date: {len(videos)} video(s)")
 
     if not videos:
         print("Error: No high-res videos found for the target date.")
         return 1
 
     if parsed.info:
-        print("\n[INFO MODE] Exiting without rendering.")
+        _info("\n[INFO MODE] Exiting without rendering.")
         return 0
 
-    temp_dir = os.path.abspath(f"temp_slices_{parsed.mode}_{parsed.date}_{__import__('os').getpid()}")
+    temp_dir = temp_dir_display
     os.makedirs(temp_dir, exist_ok=True)
 
     try:
-        processed_by_dive = build_overlay_slices(dives, videos, calc_offset, temp_dir, parsed.mode, target_dives, parsed.water)
+        ffmpeg_bin = get_ffmpeg_path()
+        hw_encoder = get_best_hardware_encoder(ffmpeg_bin)
+        _info(f"Using video encoder: {hw_encoder}")
 
-        if processed_by_dive:
-            all_success = True
-            for dive_id, processed in processed_by_dive.items():
-                base_out, ext = os.path.splitext(parsed.output)
-                if f"dive{dive_id}" not in base_out:
-                    dive_output = f"{base_out}_dive{dive_id}{ext}"
-                else:
-                    dive_output = parsed.output
-                    
-                success = concatenate_slices(processed, dive_output, temp_dir)
-                if success:
-                    print(f"\nSUCCESS! Rendered Dive #{dive_id}: {os.path.abspath(dive_output)}")
-                else:
-                    print(f"\nCRITICAL ERROR: Final concatenation failed for Dive #{dive_id}.")
-                    all_success = False
-            return 0 if all_success else 1
-        else:
-            print("\nError: No correlated clips found.")
+        all_success = True
+        has_processed = False
+
+        for d_idx, dive in enumerate(dives):
+            current_dive_id = d_idx + 1
+            if target_dives and current_dive_id not in target_dives:
+                continue
+
+            d_start, d_end = dive['Time'].min(), dive['Time'].max()
+            _info(f"Processing Dive #{current_dive_id}: {d_start} to {d_end}")
+            windows = calculate_highlight_windows(dive, d_start, d_end, parsed.mode)
+
+            base_out, ext = os.path.splitext(parsed.output)
+            if f"dive{current_dive_id}" not in base_out:
+                dive_output = f"{base_out}_dive{current_dive_id}{ext}"
+            else:
+                dive_output = parsed.output
+
+            success = process_dive(current_dive_id, dive, windows, videos, calc_offset, temp_dir, dive_output, parsed.water, ffmpeg_bin, hw_encoder)
+            
+            if success:
+                has_processed = True
+                _info(f"\nSUCCESS! Rendered Dive #{current_dive_id}: {os.path.abspath(dive_output)}")
+            else:
+                _info(f"\nCRITICAL ERROR: Final concatenation failed for Dive #{current_dive_id}.")
+                all_success = False
+
+        if not has_processed:
+            print("Error: No correlated clips found.")
             return 1
+            
+        return 0 if all_success else 1
     finally:
         try:
-            import shutil
             shutil.rmtree(temp_dir)
         except Exception:  # pragma: no cover
             pass
 
 if __name__ == "__main__":
-    import sys
     sys.exit(main())
