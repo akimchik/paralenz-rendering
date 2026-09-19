@@ -1,4 +1,4 @@
-# Headless Dive Automation (v3.2.1)
+# Headless Dive Automation (v3.2.2)
 
 Automate the creation of 4K 60fps diving movies and highlight reels directly from your camera's DCIM folder, integrated with real-time telemetry data.
 
@@ -116,11 +116,6 @@ uv run scripts/build_headless_movie.py \
   --output my_dive.mp4
 ```
 
-### Monitoring Progress
-To check the real-time status of an ongoing render, run the included status checker. It must be run using `uv` to automatically handle dependencies:
-```bash
-uv run check-status.py
-```
 
 ### Advanced Execution Examples
 

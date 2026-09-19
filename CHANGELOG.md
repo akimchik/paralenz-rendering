@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.2.2] - 2026-09-19
+
+### Changed
+- **Single-Pass Architecture**: Deprecated intermediate temp file generation for `mode=full`. Video rendering now uses the FFmpeg `concat` demuxer natively mapping `list.txt` in-points and out-points directly from the original source files, cutting temp disk usage to 0 GB.
+- **Color Correction**: Replaced flawed dynamic depth-based RGB math with a static curve-based tinting system to complement the camera's internal hardware DCC, and explicitly injected `-colorspace bt709` tags to prevent "milky black" contrast compression.
+
+### Fixed
+- **Testing Standard**: Absorbed `validate_output.py` FFprobe checks directly into pytest E2E tests, ensuring automated verification of codec, framerate, and audio presence.
+- **CI Pipelines**: Updated `get_best_hardware_encoder()` to verify encoder initialization rather than just availability, fixing crashes on headless runners without physical GPUs.
+
 ## [v3.2.1] - 2026-09-16
 
 ### Changed

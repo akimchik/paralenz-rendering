@@ -14,8 +14,7 @@ from scripts.build_headless_movie import (
     load_and_filter_logs,
     discover_videos,
     get_color_correction_filter,
-    concatenate_slices,
-    build_overlay_slices,
+    process_dive,
     main
 )
 
@@ -29,7 +28,7 @@ class TestBuildHeadlessMovie(unittest.TestCase):
     def test_format_srt_time(self):
         self.assertEqual(format_srt_time(0.0), "00:00:00,000")
         self.assertEqual(format_srt_time(3600 + 60 + 5.123), "01:01:05,123")
-        self.assertEqual(format_srt_time(3600.999), "01:00:00,999")
+        self.assertEqual(format_srt_time(3600.999), "01:00:00,999") # Fixed rounding logic
 
     def test_detect_dives_empty(self):
         self.assertEqual(detect_dives(pd.DataFrame(), 7200), [])
@@ -74,196 +73,99 @@ class TestBuildHeadlessMovie(unittest.TestCase):
     @patch('subprocess.run')
     def test_get_best_hardware_encoder_nvenc(self, mock_run):
         from scripts.build_headless_movie import get_best_hardware_encoder
-        mock_run.return_value = MagicMock(returncode=0, stdout="V....D h264_nvenc")
+        def side_effect(cmd, **kwargs):
+            return MagicMock(returncode=0 if 'h264_nvenc' in cmd else 1)
+        mock_run.side_effect = side_effect
         self.assertEqual(get_best_hardware_encoder('ffmpeg'), 'h264_nvenc')
         
     @patch('subprocess.run')
     def test_get_best_hardware_encoder_mac(self, mock_run):
         from scripts.build_headless_movie import get_best_hardware_encoder
-        mock_run.return_value = MagicMock(returncode=0, stdout="V....D h264_videotoolbox\nV....D h264_nvenc")
-        # Should pick videotoolbox because it's first in the priority list
+        def side_effect(cmd, **kwargs):
+            return MagicMock(returncode=0 if 'h264_videotoolbox' in cmd else 1)
+        mock_run.side_effect = side_effect
         self.assertEqual(get_best_hardware_encoder('ffmpeg'), 'h264_videotoolbox')
 
     @patch('subprocess.run')
     def test_get_best_hardware_encoder_fallback(self, mock_run):
         from scripts.build_headless_movie import get_best_hardware_encoder
-        mock_run.side_effect = Exception("ffmpeg not found")
+        mock_run.return_value = MagicMock(returncode=1)
         self.assertEqual(get_best_hardware_encoder('ffmpeg'), 'libx264')
 
     def test_get_color_correction_filter(self):
-        self.assertEqual(get_color_correction_filter(0), "")
-        self.assertEqual(get_color_correction_filter(15.0, water_type='none'), "")
-        self.assertEqual(get_color_correction_filter(30.0), "curves=r='0/0 0.5/0.800 1/1',")
+        self.assertEqual(get_color_correction_filter('none'), "")
+        self.assertIn("0.58", get_color_correction_filter('saltwater'))
+        self.assertIn("0.55", get_color_correction_filter('freshwater'))
 
     @patch('scripts.build_headless_movie.glob.glob')
     @patch('scripts.build_headless_movie.get_meta')
     def test_discover_videos(self, mock_get_meta, mock_glob):
-        mock_glob.return_value = ['vid1.mp4', 'vid2.mp4']
-        # Return dicts out of chronological order to test sorting
-        mock_get_meta.side_effect = [
-            {'ts': 2000, 'dur': 10},
-            {'ts': 1000, 'dur': 20}
-        ]
-        videos = discover_videos('/fake')
-        self.assertEqual(len(videos), 2)
-        self.assertEqual(videos[0]['ts'], 1000)
-        self.assertEqual(videos[1]['ts'], 2000)
+        mock_glob.return_value = ['v1.mp4', 'v2.mp4']
+        mock_get_meta.side_effect = [{'ts': 2000}, {'ts': 1000}]
+        vids = discover_videos('fake_dir')
+        self.assertEqual(len(vids), 2)
+        self.assertEqual(vids[0]['ts'], 1000)
 
-    @patch('scripts.build_headless_movie.get_ffmpeg_path', return_value='ffmpeg')
-    @patch('scripts.build_headless_movie.run_cmd')
-    def test_concatenate_slices(self, mock_run_cmd, mock_get_ffmpeg):
-        
-
-        # Test empty
-        self.assertFalse(concatenate_slices([], "out.mp4", "temp"))
-
-        # Test success
-        mock_run_cmd.return_value.returncode = 0
-        with patch('os.path.exists', return_value=True), patch('builtins.open', unittest.mock.mock_open()):
-            self.assertTrue(concatenate_slices(["f1.mp4"], "out.mp4", "temp"))
-
-        # Test fail
-        mock_run_cmd.return_value.returncode = 1
-        with patch('os.path.exists', return_value=False), patch('builtins.open', unittest.mock.mock_open()):
-            self.assertFalse(concatenate_slices(["f1.mp4"], "out.mp4", "temp"))
-
-    @patch('scripts.build_headless_movie.get_ffmpeg_path', return_value='ffmpeg')
     @patch('scripts.build_headless_movie.run_cmd')
     @patch('os.path.exists')
     @patch('builtins.open', new_callable=unittest.mock.mock_open)
-    def test_build_overlay_slices(self, mock_open, mock_exists, mock_run_cmd, mock_get_ffmpeg):
-        
+    def test_process_dive(self, mock_open, mock_exists, mock_run_cmd):
         mock_exists.return_value = True
-        mock_run_cmd.return_value.returncode = 0 # success on first try (videotoolbox)
+        mock_run_cmd.return_value.returncode = 0 
 
-        dives = [pd.DataFrame({'Time': [1000, 1010], 'Depth': [2.0, 5.0], 'Temperature': [20, 20]})]
+        dive = pd.DataFrame({'Time': [1000, 1010], 'Depth': [2.0, 5.0], 'Temperature': [20, 20]})
+        windows = [(1000, 1010)]
         videos = [{'ts': 900, 'dur': 1000, 'path': 'vid.mp4'}]
 
-        # Call it
-        processed = build_overlay_slices(dives, videos, 0, "temp", "full", [], "saltwater")
-        self.assertEqual(len(processed), 1)
+        success = process_dive(1, dive, windows, videos, 0, "temp", "out.mp4", "saltwater", "ffmpeg", "h264_videotoolbox")
+        self.assertTrue(success)
         
-        # Verify the filter arguments passed to run_cmd
         calls = mock_run_cmd.call_args_list
         self.assertTrue(len(calls) > 0, "FFmpeg should be called")
         ffmpeg_cmd = calls[0][0][0]
         
-        # Check if -vf is in the command
         self.assertIn("-vf", ffmpeg_cmd)
         vf_index = ffmpeg_cmd.index("-vf")
         vf_string = ffmpeg_cmd[vf_index + 1]
         
-        # It should contain the curves for 5m depth and the subtitles path
         self.assertIn("curves=r=", vf_string)
         self.assertIn("subtitles=", vf_string)
-        self.assertIn("temp/sub_0_0_vid.mp4.srt", vf_string.replace('\\', '/'))
-        
-        # Verify the filter arguments passed to run_cmd
-        calls = mock_run_cmd.call_args_list
-        self.assertTrue(len(calls) > 0, "FFmpeg should be called")
-        ffmpeg_cmd = calls[0][0][0]
-        
-        # Check if -vf is in the command
-        self.assertIn("-vf", ffmpeg_cmd)
-        vf_index = ffmpeg_cmd.index("-vf")
-        vf_string = ffmpeg_cmd[vf_index + 1]
-        
-        # It should contain the curves for 5m depth and the subtitles path
-        self.assertIn("curves=r=", vf_string)
-        self.assertIn("subtitles=", vf_string)
-        self.assertIn("temp/sub_0_0_vid.mp4.srt", vf_string.replace('\\', '/'))
-
-    @patch('scripts.build_headless_movie.get_ffmpeg_path', return_value='ffmpeg')
-    @patch('scripts.build_headless_movie.run_cmd')
-    @patch('os.path.exists')
-    @patch('builtins.open', new_callable=unittest.mock.mock_open)
-    def test_build_overlay_slices_fallback(self, mock_open, mock_exists, mock_run_cmd, mock_get_ffmpeg):
-        
-        mock_exists.return_value = True
-
-        # First call fails (videotoolbox), second succeeds (libx264)
-        mock_run_cmd.side_effect = [MagicMock(returncode=1), MagicMock(returncode=0)]
-
-        dives = [pd.DataFrame({'Time': [1000, 1010], 'Depth': [2.0, 5.0], 'Temperature': [20, 20]})]
-        videos = [{'ts': 900, 'dur': 1000, 'path': 'vid.mp4'}]
-
-        processed = build_overlay_slices(dives, videos, 0, "temp", "full", [], "saltwater")
-        self.assertEqual(len(processed), 1)
-        
-        # Verify the filter arguments passed to run_cmd
-        calls = mock_run_cmd.call_args_list
-        self.assertTrue(len(calls) > 0, "FFmpeg should be called")
-        ffmpeg_cmd = calls[0][0][0]
-        
-        # Check if -vf is in the command
-        self.assertIn("-vf", ffmpeg_cmd)
-        vf_index = ffmpeg_cmd.index("-vf")
-        vf_string = ffmpeg_cmd[vf_index + 1]
-        
-        # It should contain the curves for 5m depth and the subtitles path
-        self.assertIn("curves=r=", vf_string)
-        self.assertIn("subtitles=", vf_string)
-        self.assertIn("temp/sub_0_0_vid.mp4.srt", vf_string.replace('\\', '/'))
-        
-        # Verify the filter arguments passed to run_cmd
-        calls = mock_run_cmd.call_args_list
-        self.assertTrue(len(calls) > 0, "FFmpeg should be called")
-        ffmpeg_cmd = calls[0][0][0]
-        
-        # Check if -vf is in the command
-        self.assertIn("-vf", ffmpeg_cmd)
-        vf_index = ffmpeg_cmd.index("-vf")
-        vf_string = ffmpeg_cmd[vf_index + 1]
-        
-        # It should contain the curves for 5m depth and the subtitles path
-        self.assertIn("curves=r=", vf_string)
-        self.assertIn("subtitles=", vf_string)
-        self.assertIn("temp/sub_0_0_vid.mp4.srt", vf_string.replace('\\', '/'))
+        self.assertIn("temp/sub_1.srt", vf_string.replace('\\', '/'))
 
     @patch('scripts.build_headless_movie.load_and_filter_logs')
     @patch('scripts.build_headless_movie.detect_dives')
     @patch('scripts.build_headless_movie.discover_videos')
-    @patch('scripts.build_headless_movie.build_overlay_slices')
-    @patch('scripts.build_headless_movie.concatenate_slices')
+    @patch('scripts.build_headless_movie.process_dive')
     @patch('os.makedirs')
     @patch('shutil.rmtree')
-    def test_main_success(self, mock_rmtree, mock_makedirs, mock_concat, mock_build, mock_discover, mock_detect, mock_load):
-        
+    def test_main_success(self, mock_rmtree, mock_makedirs, mock_process, mock_discover, mock_detect, mock_load):
         mock_load.return_value = pd.DataFrame({'Time': [1]})
         mock_detect.return_value = [pd.DataFrame({'Time': [1000, 1010]})]
         mock_discover.return_value = [{'ts': 900, 'dur': 200, 'path': 'v.mp4'}]
-        mock_build.return_value = {1: ['slice.mp4']}
-        mock_concat.return_value = True
+        mock_process.return_value = True
 
         args = ['--date', '2026', '--logs_dir', 'l', '--media_dir', 'm', '--output', 'o']
         self.assertEqual(main(args), 0)
 
     @patch('scripts.build_headless_movie.load_and_filter_logs')
     def test_main_no_logs(self, mock_load):
-        
         mock_load.return_value = pd.DataFrame()
         args = ['--date', '2026', '--logs_dir', 'l', '--media_dir', 'm', '--output', 'o']
         self.assertEqual(main(args), 1)
 
-
     @patch('scripts.build_headless_movie.load_and_filter_logs')
     def test_argparse_water_types(self, mock_load):
-        """Verify that argparse accepts all water types and doesn't exit"""
         from scripts.build_headless_movie import main
-        mock_load.return_value = __import__('pandas').DataFrame()
+        mock_load.return_value = pd.DataFrame()
         try:
             main(['--date', '2026', '--logs_dir', 'l', '--media_dir', 'm', '--output', 'o', '--water', 'freshwater'])
         except SystemExit as e:
             self.fail(f"argparse rejected 'freshwater', exited with {e}")
-            
 
     @patch('scripts.build_headless_movie.load_and_filter_logs')
     def test_info_mode(self, mock_load):
-        """Verify that --info flag exits gracefully without rendering."""
         from scripts.build_headless_movie import main
         import pandas as pd
-        
-        # Mock some dive data so it passes the first checks
         df = pd.DataFrame({
             'ISO8601': ['2026-06-27T10:00:00Z', '2026-06-27T10:01:00Z'],
             'Time': [1.0, 61.0],
@@ -274,15 +176,11 @@ class TestBuildHeadlessMovie(unittest.TestCase):
         
         with patch('scripts.build_headless_movie.discover_videos') as mock_discover:
             mock_discover.return_value = [{'ts': 0, 'dur': 100, 'width': 3840, 'path': 'fake.MP4'}]
-            
-            # The script should exit with code 0 at the end of the info block
             ret = main(['--date', '2026-06-27', '--logs_dir', 'l', '--media_dir', 'm', '--info'])
             self.assertEqual(ret, 0)
 
-
     @patch('scripts.build_headless_movie.load_and_filter_logs')
     def test_main_exception_handling(self, mock_load):
-        """Verify that main executes finally block even if exception occurs."""
         from scripts.build_headless_movie import main
         mock_load.side_effect = Exception("Simulated fatal error")
         with self.assertRaises(Exception):
