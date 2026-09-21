@@ -66,9 +66,17 @@ class TestBuildHeadlessMovie(unittest.TestCase):
             'ISO8601': ['2026-06-06T10:00:00Z', '2026-06-07T10:00:00Z'],
             'Time': [1000, 2000]
         })
-        df = load_and_filter_logs('/fake', '2026-06-06')
+        
+        # Test with date list
+        df = load_and_filter_logs('/fake', ['2026-06-06'])
         self.assertEqual(len(df), 1)
         self.assertEqual(df.iloc[0]['Time'], 1000)
+
+        # Test without date list (auto-discover all)
+        df_all = load_and_filter_logs('/fake', [])
+        self.assertEqual(len(df_all), 2)
+        self.assertEqual(df_all.iloc[0]['Time'], 1000)
+        self.assertEqual(df_all.iloc[1]['Time'], 2000)
 
     @patch('subprocess.run')
     def test_get_best_hardware_encoder_nvenc(self, mock_run):
@@ -179,9 +187,11 @@ class TestBuildHeadlessMovie(unittest.TestCase):
             ret = main(['--date', '2026-06-27', '--logs_dir', 'l', '--media_dir', 'm', '--info'])
             self.assertEqual(ret, 0)
 
+    @patch('scripts.build_headless_movie.discover_videos')
     @patch('scripts.build_headless_movie.load_and_filter_logs')
-    def test_main_exception_handling(self, mock_load):
+    def test_main_exception_handling(self, mock_load, mock_discover):
         from scripts.build_headless_movie import main
+        mock_discover.return_value = [{'ts': 1000, 'dur': 100, 'path': 'fake'}]
         mock_load.side_effect = Exception("Simulated fatal error")
         with self.assertRaises(Exception):
             main(['--date', '2026-06-27', '--logs_dir', 'l', '--media_dir', 'm'])

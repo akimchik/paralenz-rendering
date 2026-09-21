@@ -74,7 +74,7 @@ Post-release audit of v3.2.1 revealed 14 issues. All were resolved during the v3
 - [x] **CR-14: Remove unused `import json` from `test_headless_engine.py`** *(Resolved natively: `json` is now used by `inspect_video`).*
 
 ## Phase 6: Future Features (Backlog)
-- [ ] **Multi-Day Processing:** Accept a date range (`--date-from`, `--date-to`) or auto-discover all available dates from the logs directory. *(Carried from Phase 4)*
+- [x] **Multi-Day Processing:** Accept a date range (`--date-from`, `--date-to`) or auto-discover all available dates from the logs directory. *(Carried from Phase 4)*
 - [ ] **Smooth Transitions:** Cross-dissolves between clips via FFmpeg `xfade` filter. *(Carried from Phase 3)*
 
 ---

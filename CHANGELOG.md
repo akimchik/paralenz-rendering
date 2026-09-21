@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.3.0] - 2026-09-21
+
+### Added
+- **Multi-Day Processing (Media-Driven Auto-Discovery)**: The `--date` argument is now optional. When omitted, the script automatically scans the `DCIM` folder, extracts unique dates from all `.MP4` files, and loads only the relevant logs. This allows processing an entire vacation's worth of dives in a single command.
+- **E2E Testing**: Added automated coverage for multi-day processing and the `--water none` flag to prevent regressions.
+
+### Changed
+- **Default Dive Gap**: Reduced the default `--gap` threshold from 30 minutes (1800s) to 15 minutes (900s).
+
 ## [v3.2.2] - 2026-09-19
 
 ### Changed
