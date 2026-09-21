@@ -51,27 +51,27 @@ Full code review revealed 18 issues. All resolved across v3.1.5, v3.1.6, and v3.
 - [x] **Script Cleanup:** Removed obsolete `check-status.py`, `calc_offset.py`, and `check_videos.py` — all functionality absorbed into `build_headless_movie.py`.
 - [ ] **Multi-Day Processing:** Upgrade the entrypoint to accept a range of dates (or automatically process all available media dates) in a single run. *(Carried to Phase 6)*
 
-## Phase 5: v3.2.1 Code Review Remediation (v3.2.2)
+## Phase 5: v3.2.1 Code Review Remediation ✅ (Closed — v3.2.2)
 
-Post-release audit of v3.2.1 revealed 14 issues. Grouped by priority.
+Post-release audit of v3.2.1 revealed 14 issues. All were resolved during the v3.2.2 Single-Pass Architecture transition.
 
 ### 🔴 Critical (Must fix before any new features)
-- [ ] **CR-01: Delete `tests/validate_output.py`** — 286 lines of dead code. Not collected by pytest (no `TestCase` class, no `test_` functions). Calls `sys.exit()` which would kill pytest if ever imported.
-- [ ] **CR-02: Replace `__import__('os')` anti-pattern** — `_process_slice()` uses `__import__('os').path.basename()` three times instead of the already-imported `os` module.
-- [ ] **CR-03: Remove duplicate inline imports** — `subprocess` re-imported inside `get_best_hardware_encoder()` (already at module level L19). `shutil` re-imported inside `finally` block (already at module level L25).
-- [ ] **CR-05: Remove `check-status.py` reference from README** — "Monitoring Progress" section documents a deleted script.
-- [ ] **CR-06: Remove `evermeet.cx` recommendation from README** — This source ships x86_64-only binaries without `libass`. Broke our CI today. Replace with Homebrew tap instructions only.
+- [x] **CR-01: Delete `tests/validate_output.py`** — 286 lines of dead code. Not collected by pytest (no `TestCase` class, no `test_` functions). Calls `sys.exit()` which would kill pytest if ever imported.
+- [x] **CR-02: Replace `__import__('os')` anti-pattern** — `_process_slice()` uses `__import__('os').path.basename()` three times instead of the already-imported `os` module. *(Resolved natively: `_process_slice` was deleted in Single-Pass rewrite).*
+- [x] **CR-03: Remove duplicate inline imports** — `subprocess` re-imported inside `get_best_hardware_encoder()` (already at module level L19). `shutil` re-imported inside `finally` block (already at module level L25).
+- [x] **CR-05: Remove `check-status.py` reference from README** — "Monitoring Progress" section documents a deleted script.
+- [x] **CR-06: Remove `evermeet.cx` recommendation from README** — This source ships x86_64-only binaries without `libass`. Broke our CI today. Replace with Homebrew tap instructions only.
 
 ### 🟡 Medium (Should fix in same iteration)
-- [ ] **CR-07: Fix `temp_dir_display` banner** — Banner at L299 prints `temp_slices_{mode}` but actual dir created at L346 is `temp_slices_{mode}_{date}_{pid}`. User sees a non-existent path.
-- [ ] **CR-08: Delete duplicated assertion blocks in tests** — `test_build_overlay_slices` and `test_build_overlay_slices_fallback` each have the same 12-line assertion block copy-pasted twice.
-- [ ] **CR-09: Remove `print\(` from `.coveragerc` exclusions** — This silently excludes every `print()` statement from coverage analysis, including actual error handling paths. Coverage numbers are inflated. **Solution:** Extract cosmetic output (banners, progress) into a `_info(msg)` helper marked with `# pragma: no cover`. Keep raw `print()` only for error paths — these must be covered by tests.
+- [x] **CR-07: Fix `temp_dir_display` banner** — Banner at L299 prints `temp_slices_{mode}` but actual dir created at L346 is `temp_slices_{mode}_{date}_{pid}`. User sees a non-existent path.
+- [x] **CR-08: Delete duplicated assertion blocks in tests** — `test_build_overlay_slices` and `test_build_overlay_slices_fallback` each have the same 12-line assertion block copy-pasted twice. *(Resolved natively: deleted obsolete tests).*
+- [x] **CR-09: Remove `print\(` from `.coveragerc` exclusions** — This silently excludes every `print()` statement from coverage analysis, including actual error handling paths. Coverage numbers are inflated. **Solution:** Extract cosmetic output (banners, progress) into a `_info(msg)` helper marked with `# pragma: no cover`. Keep raw `print()` only for error paths — these must be covered by tests.
 - [ ] **CR-10: Fix freshwater blue channel coefficient** — Red and blue curves use the same `mid` value. Freshwater should use a lower blue boost (e.g., `boost * 0.5`) to avoid unnatural pink tones.
 - [ ] **CR-11: Add `--water` flag coverage in E2E tests** — No E2E test for `freshwater` or `none`. Add at minimum a `--water none` E2E test.
 
 ### 🟢 Low / Cosmetic
-- [ ] **CR-12: Clean BACKLOG.md references to deleted scripts** — *(This commit)*
-- [ ] **CR-14: Remove unused `import json` from `test_headless_engine.py`**
+- [x] **CR-12: Clean BACKLOG.md references to deleted scripts** — *(This commit)*
+- [x] **CR-14: Remove unused `import json` from `test_headless_engine.py`** *(Resolved natively: `json` is now used by `inspect_video`).*
 
 ## Phase 6: Future Features (Backlog)
 - [ ] **Multi-Day Processing:** Accept a date range (`--date-from`, `--date-to`) or auto-discover all available dates from the logs directory. *(Carried from Phase 4)*
