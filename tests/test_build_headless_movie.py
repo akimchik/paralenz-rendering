@@ -184,8 +184,15 @@ class TestBuildHeadlessMovie(unittest.TestCase):
         
         with patch('scripts.build_headless_movie.discover_videos') as mock_discover:
             mock_discover.return_value = [{'ts': 0, 'dur': 100, 'width': 3840, 'path': 'fake.MP4'}]
-            ret = main(['--date', '2026-06-27', '--logs_dir', 'l', '--media_dir', 'm', '--info'])
+            import io
+            from contextlib import redirect_stdout
+            f_out = io.StringIO()
+            with redirect_stdout(f_out):
+                ret = main(['--date', '1970-01-01', '--logs_dir', 'l', '--media_dir', 'm', '--info'])
+            stdout = f_out.getvalue()
+            
             self.assertEqual(ret, 0)
+            self.assertIn("Global #01 | Date: 1970-01-01 | Day Dive #1 | Time: 00:00:01 - 00:01:01 UTC", stdout)
 
     @patch('scripts.build_headless_movie.discover_videos')
     @patch('scripts.build_headless_movie.load_and_filter_logs')

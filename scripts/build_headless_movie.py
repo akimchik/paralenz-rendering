@@ -327,7 +327,18 @@ def main(args=None):
         return 1
 
     if parsed.info:
-        _info("\n[INFO MODE] Exiting without rendering.")
+        _info("\n[INFO MODE] Discovered Dives:")
+        _info("-" * 65)
+        info_counters = {}
+        for d_idx, dive in enumerate(dives):
+            d_start, d_end = dive['Time'].min(), dive['Time'].max()
+            d_date = datetime.datetime.fromtimestamp(d_start, timezone.utc).strftime('%Y-%m-%d')
+            d_st = datetime.datetime.fromtimestamp(d_start, timezone.utc).strftime('%H:%M:%S')
+            d_et = datetime.datetime.fromtimestamp(d_end, timezone.utc).strftime('%H:%M:%S')
+            info_counters[d_date] = info_counters.get(d_date, 0) + 1
+            _info(f"Global #{d_idx + 1:02d} | Date: {d_date} | Day Dive #{info_counters[d_date]} | Time: {d_st} - {d_et} UTC")
+        _info("-" * 65)
+        _info("Exiting without rendering.")
         return 0
 
     temp_dir = temp_dir_display
