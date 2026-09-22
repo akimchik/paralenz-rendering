@@ -1,4 +1,4 @@
-# Headless Dive Automation (v3.3.0)
+# Headless Dive Automation (v3.3.1)
 
 Automate the creation of 4K 60fps diving movies and highlight reels directly from your camera's DCIM folder, integrated with real-time telemetry data.
 
