@@ -17,6 +17,7 @@ Automate the creation of 4K 60fps diving movies and highlight reels directly fro
 
 - **Universal Multi-Dive Support:** Automatically detects multiple dive sessions per day and correlates video clips using recording timestamps.
 - **Headless Pipeline:** Renders directly from the terminal without needing any heavy UI software.
+- **Clean Progress Tracking:** Parses raw FFmpeg output to display a clean, single-line progress bar with accurate percentage and elapsed time metrics.
 - **Movie Assembly:** Chronologically joins high-res MP4s and builds a seamless video.
 - **AI-Free Highlights:** Creates a punchy highlight reel by taking three 3-second "action slices" (Start, Mid, End) from every clip.
 - **Dynamic HUD:** Overlays real-time depth and temperature telemetry via dynamic SubRip (`.srt`) subtitle generation, seamlessly synchronized using camera RTC.
@@ -161,12 +162,12 @@ uv run scripts/build_headless_movie.py \
 ## Core Advanced Features
 
 ### Global Multi-Dive Support
-The system automatically detects multiple dives in your logs using a configurable gap (default: 30 mins). It correlates each video clip to the correct dive using its recording timestamp.
+The system automatically detects multiple dives in your logs using a configurable gap (default: 15 mins). It correlates each video clip to the correct dive using its recording timestamp.
 - **Auto-Sync:** If you have 3 dives in one day, the script will generate 3 separate HUD profiles and sync the correct data to the correct footage automatically.
 - **Session Detection:** It identifies gaps in activity to separate "Dives" from "Surface intervals."
 
 > [!TIP]
-> The default gap is `1800` seconds (30 mins) to accommodate very long surface intervals. If you need tighter split thresholds, pass a lower value using `--gap`.
+> The default gap is `900` seconds (15 mins) to accommodate surface intervals. If you need tighter or looser split thresholds, pass a custom value using `--gap`.
 
 ### Dynamic HUD
 A real-time depth and temperature HUD is injected into the video using dynamic SubRip (`.srt`) subtitle generation.
