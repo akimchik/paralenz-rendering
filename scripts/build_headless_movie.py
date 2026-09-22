@@ -13,6 +13,7 @@ import concurrent.futures
 import argparse
 import glob
 import datetime
+import re
 import subprocess
 
 try:
@@ -45,12 +46,42 @@ except ModuleNotFoundError:  # pragma: no cover
         print(f"Error dynamically loading utils.py from branch '{branch}': {e}")
         sys.exit(1)
 
-def run_cmd(cmd):
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
+def run_cmd(cmd, total_duration=None):
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+    time_regex = re.compile(r"time=(\d{2}):(\d{2}):(\d{2})\.(\d{2})")
+    
+    last_lines = []
+    
+    for line in process.stdout:
+        last_lines.append(line)
+        if len(last_lines) > 20:
+            last_lines.pop(0)
+            
+        match = time_regex.search(line)
+        if match:
+            h, m, s, ms = match.groups()
+            curr_sec = float(h)*3600 + float(m)*60 + float(s) + float(ms)/100.0
+            
+            if total_duration and total_duration > 0:
+                pct = (curr_sec / total_duration) * 100
+                print(f"\r⏳ Render Progress: {h}:{m}:{s} / {format_srt_time(total_duration).replace(',', '.')} ({pct:.1f}%)", end="", flush=True)
+            else:
+                print(f"\r⏳ Render Progress: {h}:{m}:{s}", end="", flush=True)
+            
+    process.wait()
+    print() # clear the progress line
+    
+    if process.returncode != 0:
         print(f"Command Error: {' '.join(cmd)}")
-        print(f"Stderr: {result.stderr}")
-    return result
+        print("Last output:")
+        print("".join(last_lines))
+        
+    class DummyResult:
+        def __init__(self, returncode, stderr):
+            self.returncode = returncode
+            self.stderr = stderr
+            
+    return DummyResult(process.returncode, "".join(last_lines))
 
 def _info(msg): # pragma: no cover
     print(msg)
@@ -75,7 +106,7 @@ def get_color_correction_filter(water_type='saltwater'):
     if water_type == 'saltwater':
         return "curves=r='0/0 0.5/0.58 1/1':b='0/0 0.5/0.45 1/1',"
     elif water_type == 'freshwater':
-        return "curves=r='0/0 0.5/0.55 1/1':g='0/0 0.5/0.45 1/1',"
+        return "curves=r='0/0 0.5/0.55 1/1':g='0/0 0.5/0.45 1/1':b='0/0 0.5/0.25 1/1',"
     return ""
 
 def parse_dive_list(dive_list_str):
@@ -239,7 +270,7 @@ def process_dive(dive_id, dive, windows, videos, calc_offset, temp_dir, output_f
         os.path.abspath(output_file)
     ]
     
-    res = run_cmd(cmd)
+    res = run_cmd(cmd, total_duration=current_virtual_time)
     return res.returncode == 0 and os.path.exists(output_file)
 
 def main(args=None):

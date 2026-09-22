@@ -203,5 +203,58 @@ class TestBuildHeadlessMovie(unittest.TestCase):
         with self.assertRaises(Exception):
             main(['--date', '2026-06-27', '--logs_dir', 'l', '--media_dir', 'm'])
 
+    @patch('scripts.build_headless_movie.subprocess.Popen')
+    def test_run_cmd_progress(self, mock_popen):
+        import io
+        import sys
+        from scripts.build_headless_movie import run_cmd
+        
+        mock_process = MagicMock()
+        mock_process.stdout = [
+            "frame=  100 fps= 30 q=28.0 size= 2048kB time=00:01:30.00 bitrate=3000.0kbits/s speed=1.5x\n",
+            "frame=  200 fps= 30 q=28.0 size= 4096kB time=00:03:00.00 bitrate=3000.0kbits/s speed=1.5x\n"
+        ]
+        mock_process.returncode = 0
+        mock_popen.return_value = mock_process
+        
+        captured_output = io.StringIO()
+        original_stdout = sys.stdout
+        sys.stdout = captured_output
+        try:
+            res = run_cmd(["fake_cmd"], total_duration=360.0)
+        finally:
+            sys.stdout = original_stdout
+            
+        output = captured_output.getvalue()
+        self.assertIn("00:01:30 / 00:06:00.000 (25.0%)", output)
+        self.assertIn("00:03:00 / 00:06:00.000 (50.0%)", output)
+        self.assertEqual(res.returncode, 0)
+        
+    @patch('scripts.build_headless_movie.subprocess.Popen')
+    def test_run_cmd_no_total_duration(self, mock_popen):
+        import io
+        import sys
+        from scripts.build_headless_movie import run_cmd
+        
+        mock_process = MagicMock()
+        mock_process.stdout = [
+            "time=00:01:30.00\n"
+        ]
+        mock_process.returncode = 0
+        mock_popen.return_value = mock_process
+        
+        captured_output = io.StringIO()
+        original_stdout = sys.stdout
+        sys.stdout = captured_output
+        try:
+            res = run_cmd(["fake_cmd"])
+        finally:
+            sys.stdout = original_stdout
+            
+        output = captured_output.getvalue()
+        self.assertIn("00:01:30", output)
+        self.assertNotIn("%", output)
+        self.assertEqual(res.returncode, 0)
+
 if __name__ == "__main__":
     unittest.main()
