@@ -106,7 +106,7 @@ def get_color_correction_filter(water_type='saltwater'):
     if water_type == 'saltwater':
         return "curves=r='0/0 0.5/0.58 1/1':b='0/0 0.5/0.45 1/1',"
     elif water_type == 'freshwater':
-        return "curves=r='0/0 0.5/0.55 1/1':g='0/0 0.5/0.45 1/1':b='0/0 0.5/0.25 1/1',"
+        return "curves=r='0/0 0.5/0.55 1/1':g='0/0 0.5/0.45 1/1',"
     return ""
 
 def parse_dive_list(dive_list_str):
