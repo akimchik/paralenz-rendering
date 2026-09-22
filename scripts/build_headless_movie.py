@@ -110,7 +110,7 @@ def discover_videos(media_dir):
     _info(f"Found {len(mp4_files)} .MP4 files. Reading metadata...")
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=min(16, (os.cpu_count() or 4) * 2)) as executor:
-        results = executor.map(lambda f: get_meta(f, min_width=3000), mp4_files)
+        results = executor.map(lambda f: get_meta(f, min_width=1000), mp4_files)
         for m in results:
             if m:
                 videos.append(m)
