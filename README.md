@@ -141,6 +141,19 @@ uv run scripts/build_headless_movie.py \
   --water none
 ```
 
+**4. Preview all dives across an entire trip (Multi-Day Info Mode):**
+```bash
+uv run scripts/build_headless_movie.py \
+  --logs_dir ./data/logs --media_dir ./data/media \
+  --info
+```
+
+**5. Render all dives from all dates automatically:**
+```bash
+uv run scripts/build_headless_movie.py \
+  --logs_dir ./data/logs --media_dir ./data/media
+```
+
 ## CLI Arguments Reference
 
 | Argument | Required | Default | Description |
