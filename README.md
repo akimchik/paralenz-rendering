@@ -144,15 +144,16 @@ uv run scripts/build_headless_movie.py \
 
 | Argument | Required | Default | Description |
 | :--- | :---: | :---: | :--- |
-| `--date` | **Yes** | - | Target ISO8601 date (e.g. `2026-06-27`). |
-| `--logs_dir` | **Yes** | - | Path to directory containing `.CSV` logs. |
-| `--media_dir` | **Yes** | - | Path to directory containing `.MP4` files. |
-| `--output` | **Yes** | - | Output path for the rendered MP4 file. |
+| `--date` | No | Auto | Target ISO8601 date (e.g. `2026-06-27`). If omitted, auto-discovers all dates from video metadata. |
+| `--logs_dir` | **Yes** | - | Path to directory containing `.CSV` logs. (Optional if set in `.env`) |
+| `--media_dir` | **Yes** | - | Path to directory containing `.MP4` files. (Optional if set in `.env`) |
+| `--output` | No | Auto | Output path for the rendered MP4 file. Automatically generated if omitted. |
 | `--mode` | No | `full` | `full` (renders entire sessions) or `highlights` (5-chapter smart slices). |
 | `--offset` | No | `0` | Force manual time sync offset in seconds between telemetry and video. |
 | `--dive_list` | No | `""` | Comma-separated list of Dive IDs to render (e.g. `1,3,4`). Processes all if empty. |
-| `--gap` | No | `1800` | Gap threshold in seconds to detect new dives. Default is 30 mins (1800s). |
-| `--water` | No | `saltwater` | `saltwater` (boosts red), `freshwater` (boosts magenta), or `none` (disables correction). |
+| `--gap` | No | `900` | Gap threshold in seconds to detect new dives. Default is 15 mins (900s). |
+| `--water` | No | `none` | `saltwater` (boosts red), `freshwater` (boosts magenta), or `none` (disables correction). |
+| `--info` | No | `False` | Print a detailed table of all detected dives, dates, and times, then exit without rendering. |
 
 > [!WARNING]
 > The dynamic color correction (`--water {saltwater,freshwater,none}`) is an advanced `curves` filter that restores absorbed colors proportionally to the current dive depth. It targets mid-tones to naturally recover colors without amplifying noise in deep shadows.

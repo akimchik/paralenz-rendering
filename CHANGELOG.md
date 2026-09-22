@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Multi-Day Processing (Media-Driven Auto-Discovery)**: The `--date` argument is now optional. When omitted, the script automatically scans the `DCIM` folder, extracts unique dates from all `.MP4` files, and loads only the relevant logs. This allows processing an entire vacation's worth of dives in a single command.
-- **E2E Testing**: Added automated coverage for multi-day processing and the `--water none` flag to prevent regressions.
+- **Detailed Dive Info Mode**: The `--info` flag now prints a neatly formatted table of all detected dives, including their precise dates, global/daily dive numbers, and start/end UTC times, allowing you to preview the session map before rendering.
+- **E2E Testing**: Added automated coverage for multi-day processing, the `--info` table output, and the `--water none` flag to prevent regressions.
 
 ### Changed
 - **Default Dive Gap**: Reduced the default `--gap` threshold from 30 minutes (1800s) to 15 minutes (900s).
