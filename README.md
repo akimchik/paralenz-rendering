@@ -1,4 +1,4 @@
-# Headless Dive Automation (v3.2.2)
+# Headless Dive Automation (v3.3.0)
 
 Automate the creation of 4K 60fps diving movies and highlight reels directly from your camera's DCIM folder, integrated with real-time telemetry data.
 
@@ -17,6 +17,7 @@ Automate the creation of 4K 60fps diving movies and highlight reels directly fro
 
 - **Universal Multi-Dive Support:** Automatically detects multiple dive sessions per day and correlates video clips using recording timestamps.
 - **Headless Pipeline:** Renders directly from the terminal without needing any heavy UI software.
+- **Clean Progress Tracking:** Parses raw FFmpeg output to display a clean, single-line progress bar with accurate percentage and elapsed time metrics.
 - **Movie Assembly:** Chronologically joins high-res MP4s and builds a seamless video.
 - **AI-Free Highlights:** Creates a punchy highlight reel by taking three 3-second "action slices" (Start, Mid, End) from every clip.
 - **Dynamic HUD:** Overlays real-time depth and temperature telemetry via dynamic SubRip (`.srt`) subtitle generation, seamlessly synchronized using camera RTC.
@@ -140,19 +141,33 @@ uv run scripts/build_headless_movie.py \
   --water none
 ```
 
+**4. Preview all dives across an entire trip (Multi-Day Info Mode):**
+```bash
+uv run scripts/build_headless_movie.py \
+  --logs_dir ./data/logs --media_dir ./data/media \
+  --info
+```
+
+**5. Render all dives from all dates automatically:**
+```bash
+uv run scripts/build_headless_movie.py \
+  --logs_dir ./data/logs --media_dir ./data/media
+```
+
 ## CLI Arguments Reference
 
 | Argument | Required | Default | Description |
 | :--- | :---: | :---: | :--- |
-| `--date` | **Yes** | - | Target ISO8601 date (e.g. `2026-06-27`). |
-| `--logs_dir` | **Yes** | - | Path to directory containing `.CSV` logs. |
-| `--media_dir` | **Yes** | - | Path to directory containing `.MP4` files. |
-| `--output` | **Yes** | - | Output path for the rendered MP4 file. |
+| `--date` | No | Auto | Target ISO8601 date (e.g. `2026-06-27`). If omitted, auto-discovers all dates from video metadata. |
+| `--logs_dir` | **Yes** | - | Path to directory containing `.CSV` logs. (Optional if set in `.env`) |
+| `--media_dir` | **Yes** | - | Path to directory containing `.MP4` files. (Optional if set in `.env`) |
+| `--output` | No | Auto | Output path for the rendered MP4 file. Automatically generated if omitted. |
 | `--mode` | No | `full` | `full` (renders entire sessions) or `highlights` (5-chapter smart slices). |
 | `--offset` | No | `0` | Force manual time sync offset in seconds between telemetry and video. |
 | `--dive_list` | No | `""` | Comma-separated list of Dive IDs to render (e.g. `1,3,4`). Processes all if empty. |
-| `--gap` | No | `1800` | Gap threshold in seconds to detect new dives. Default is 30 mins (1800s). |
-| `--water` | No | `saltwater` | `saltwater` (boosts red), `freshwater` (boosts magenta), or `none` (disables correction). |
+| `--gap` | No | `900` | Gap threshold in seconds to detect new dives. Default is 15 mins (900s). |
+| `--water` | No | `none` | `saltwater` (boosts red), `freshwater` (boosts magenta), or `none` (disables correction). |
+| `--info` | No | `False` | Print a detailed table of all detected dives, dates, and times, then exit without rendering. |
 
 > [!WARNING]
 > The dynamic color correction (`--water {saltwater,freshwater,none}`) is an advanced `curves` filter that restores absorbed colors proportionally to the current dive depth. It targets mid-tones to naturally recover colors without amplifying noise in deep shadows.
@@ -160,12 +175,12 @@ uv run scripts/build_headless_movie.py \
 ## Core Advanced Features
 
 ### Global Multi-Dive Support
-The system automatically detects multiple dives in your logs using a configurable gap (default: 30 mins). It correlates each video clip to the correct dive using its recording timestamp.
+The system automatically detects multiple dives in your logs using a configurable gap (default: 15 mins). It correlates each video clip to the correct dive using its recording timestamp.
 - **Auto-Sync:** If you have 3 dives in one day, the script will generate 3 separate HUD profiles and sync the correct data to the correct footage automatically.
 - **Session Detection:** It identifies gaps in activity to separate "Dives" from "Surface intervals."
 
 > [!TIP]
-> The default gap is `1800` seconds (30 mins) to accommodate very long surface intervals. If you need tighter split thresholds, pass a lower value using `--gap`.
+> The default gap is `900` seconds (15 mins) to accommodate surface intervals. If you need tighter or looser split thresholds, pass a custom value using `--gap`.
 
 ### Dynamic HUD
 A real-time depth and temperature HUD is injected into the video using dynamic SubRip (`.srt`) subtitle generation.

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.3.0] - 2026-09-22
+
+### Added
+- **Multi-Day Processing (Media-Driven Auto-Discovery)**: The `--date` argument is now optional. When omitted, the script automatically scans the `DCIM` folder, extracts unique dates from all `.MP4` files, and loads only the relevant logs. This allows processing an entire vacation's worth of dives in a single command.
+- **Detailed Dive Info Mode**: The `--info` flag now prints a neatly formatted table of all detected dives, including their precise dates, global/daily dive numbers, and start/end UTC times, allowing you to preview the session map before rendering.
+- **Clean FFmpeg Progress Bar**: Replaced raw FFmpeg stdout dumping with a clean, single-line terminal progress bar indicating render percentage and elapsed time.
+- **E2E Testing**: Added automated coverage for multi-day processing, the `--info` table output, the progress parser, and the `--water none` flag to prevent regressions.
+
+### Changed
+- **Default Dive Gap**: Reduced the default `--gap` threshold from 30 minutes (1800s) to 15 minutes (900s).
+- **Freshwater Color Correction**: Updated the freshwater `curves` filter to drastically lower the blue channel (`b='0/0 0.5/0.25 1/1'`) to improve visual clarity based on manual testing.
+
 ## [v3.2.2] - 2026-09-19
 
 ### Changed

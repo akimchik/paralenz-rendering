@@ -13,6 +13,7 @@ import concurrent.futures
 import argparse
 import glob
 import datetime
+import re
 import subprocess
 
 try:
@@ -45,12 +46,42 @@ except ModuleNotFoundError:  # pragma: no cover
         print(f"Error dynamically loading utils.py from branch '{branch}': {e}")
         sys.exit(1)
 
-def run_cmd(cmd):
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
+def run_cmd(cmd, total_duration=None):
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+    time_regex = re.compile(r"time=(\d{2}):(\d{2}):(\d{2})\.(\d{2})")
+    
+    last_lines = []
+    
+    for line in process.stdout:
+        last_lines.append(line)
+        if len(last_lines) > 20:
+            last_lines.pop(0)
+            
+        match = time_regex.search(line)
+        if match:
+            h, m, s, ms = match.groups()
+            curr_sec = float(h)*3600 + float(m)*60 + float(s) + float(ms)/100.0
+            
+            if total_duration and total_duration > 0:
+                pct = (curr_sec / total_duration) * 100
+                print(f"\r⏳ Render Progress: {h}:{m}:{s} / {format_srt_time(total_duration).replace(',', '.')} ({pct:.1f}%)", end="", flush=True)
+            else:
+                print(f"\r⏳ Render Progress: {h}:{m}:{s}", end="", flush=True)
+            
+    process.wait()
+    print() # clear the progress line
+    
+    if process.returncode != 0:
         print(f"Command Error: {' '.join(cmd)}")
-        print(f"Stderr: {result.stderr}")
-    return result
+        print("Last output:")
+        print("".join(last_lines))
+        
+    class DummyResult:
+        def __init__(self, returncode, stderr):
+            self.returncode = returncode
+            self.stderr = stderr
+            
+    return DummyResult(process.returncode, "".join(last_lines))
 
 def _info(msg): # pragma: no cover
     print(msg)
@@ -75,7 +106,7 @@ def get_color_correction_filter(water_type='saltwater'):
     if water_type == 'saltwater':
         return "curves=r='0/0 0.5/0.58 1/1':b='0/0 0.5/0.45 1/1',"
     elif water_type == 'freshwater':
-        return "curves=r='0/0 0.5/0.55 1/1':g='0/0 0.5/0.45 1/1',"
+        return "curves=r='0/0 0.5/0.55 1/1':g='0/0 0.5/0.45 1/1':b='0/0 0.5/0.25 1/1',"
     return ""
 
 def parse_dive_list(dive_list_str):
@@ -83,12 +114,16 @@ def parse_dive_list(dive_list_str):
         return []
     return [int(d.strip()) for d in dive_list_str.split(',')]
 
-def load_and_filter_logs(logs_dir, date):
+def load_and_filter_logs(logs_dir, target_dates):
     log_files = glob.glob(os.path.join(logs_dir, "*.csv"))
     if not log_files:
         return pd.DataFrame()
     df = pd.concat([pd.read_csv(f) for f in log_files])
-    df = df[df['ISO8601'].str.startswith(date, na=False)]
+    
+    if target_dates:
+        # Filter if ISO8601 starts with any of the target dates
+        df = df[df['ISO8601'].str[:10].isin(target_dates)]
+        
     if df.empty:
         return df
     df['Time'] = pd.to_numeric(df['Time'], errors='coerce')
@@ -106,7 +141,7 @@ def discover_videos(media_dir):
     _info(f"Found {len(mp4_files)} .MP4 files. Reading metadata...")
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=min(16, (os.cpu_count() or 4) * 2)) as executor:
-        results = executor.map(lambda f: get_meta(f, min_width=3000), mp4_files)
+        results = executor.map(lambda f: get_meta(f, min_width=1000), mp4_files)
         for m in results:
             if m:
                 videos.append(m)
@@ -235,19 +270,19 @@ def process_dive(dive_id, dive, windows, videos, calc_offset, temp_dir, output_f
         os.path.abspath(output_file)
     ]
     
-    res = run_cmd(cmd)
+    res = run_cmd(cmd, total_duration=current_virtual_time)
     return res.returncode == 0 and os.path.exists(output_file)
 
 def main(args=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--date", required=True)
+    parser.add_argument("--date", required=False, default=None)
     parser.add_argument("--logs_dir", required=False, default=os.environ.get("LOGS_DIR"))
     parser.add_argument("--media_dir", required=False, default=os.environ.get("SEARCH_DIR"))
     parser.add_argument("--output", required=False)
     parser.add_argument("--mode", choices=['highlights', 'full'], default='full')
     parser.add_argument("--offset", type=int, default=None, help="Force manual offset in seconds.")
     parser.add_argument("--dive_list", type=str, default="", help="Comma-separated list of dive IDs.")
-    parser.add_argument("--gap", type=int, default=1800, help="Seconds of gap to split session.")
+    parser.add_argument("--gap", type=int, default=900, help="Seconds of gap to split session.")
     parser.add_argument("--water", choices=['saltwater', 'freshwater', 'none'], default='none', help="Water type.")
     parser.add_argument("--info", action="store_true", help="Print detected dives and exit without rendering.")
 
@@ -256,21 +291,37 @@ def main(args=None):
     if not parsed.logs_dir or not parsed.media_dir:
         print("Error: --logs_dir and --media_dir are required if LOGS_DIR and SEARCH_DIR are not set in .env")
         return 1
+
+    videos = discover_videos(parsed.media_dir)
+    _info(f"Indexed High-Res Videos (all): {len(videos)}")
+    
+    if not videos:
+        print("Error: No high-res videos found in the media directory.")
+        return 1
+
+    # Extract unique dates from video timestamps
+    target_dates = [parsed.date] if parsed.date else list(set([
+        datetime.datetime.fromtimestamp(v['ts'], timezone.utc).strftime('%Y-%m-%d')
+        for v in videos
+    ]))
+
+    display_date = parsed.date if parsed.date else f"Auto-discovered ({len(target_dates)} days)"
+    safe_date_name = parsed.date if parsed.date else "multiday"
         
     if not parsed.output:
-        base = os.path.join(os.path.expanduser("~"), "Movies", f"dive_{parsed.date}")
+        base = os.path.join(os.path.expanduser("~"), "Movies", f"dive_{safe_date_name}")
         if parsed.dive_list:
             base += f"_dive{parsed.dive_list.replace(',', '_')}"
         if parsed.mode == 'highlights':
             base += "_highlights"
         parsed.output = base + ".mp4"
 
-    temp_dir_name = f"temp_slices_{parsed.mode}_{parsed.date}_{os.getpid()}"
+    temp_dir_name = f"temp_slices_{parsed.mode}_{safe_date_name}_{os.getpid()}"
     temp_dir_display = os.path.abspath(temp_dir_name)
     _info("\n========================================")
     _info("🎬 PARALENZ HEADLESS RENDERER")
     _info("========================================")
-    _info(f"📅 Date:       {parsed.date}")
+    _info(f"📅 Date:       {display_date}")
     _info(f"🌊 Dives:      {parsed.dive_list if parsed.dive_list else 'All detected'}")
     _info(f"🎯 Mode:       {parsed.mode.upper()}")
     _info(f"💧 Water:      {parsed.water.upper()}")
@@ -280,9 +331,9 @@ def main(args=None):
 
     target_dives = parse_dive_list(parsed.dive_list)
 
-    df = load_and_filter_logs(parsed.logs_dir, parsed.date)
+    df = load_and_filter_logs(parsed.logs_dir, target_dates)
     if df.empty:
-        print(f"Error: No valid logs matching date {parsed.date} found.")
+        print(f"Error: No valid logs matching dates {target_dates} found.")
         return 1
 
     dives = detect_dives(df, parsed.gap)
@@ -290,9 +341,6 @@ def main(args=None):
     if not dives:
         print("Error: No valid dives detected in telemetry.")
         return 1
-
-    videos = discover_videos(parsed.media_dir)
-    _info(f"Indexed High-Res Videos (all): {len(videos)}")
 
     calc_offset = parsed.offset if parsed.offset is not None else 0
     if parsed.offset is not None:
@@ -310,7 +358,18 @@ def main(args=None):
         return 1
 
     if parsed.info:
-        _info("\n[INFO MODE] Exiting without rendering.")
+        _info("\n[INFO MODE] Discovered Dives:")
+        _info("-" * 65)
+        info_counters = {}
+        for d_idx, dive in enumerate(dives):
+            d_start, d_end = dive['Time'].min(), dive['Time'].max()
+            d_date = datetime.datetime.fromtimestamp(d_start, timezone.utc).strftime('%Y-%m-%d')
+            d_st = datetime.datetime.fromtimestamp(d_start, timezone.utc).strftime('%H:%M:%S')
+            d_et = datetime.datetime.fromtimestamp(d_end, timezone.utc).strftime('%H:%M:%S')
+            info_counters[d_date] = info_counters.get(d_date, 0) + 1
+            _info(f"Global #{d_idx + 1:02d} | Date: {d_date} | Day Dive #{info_counters[d_date]} | Time: {d_st} - {d_et} UTC")
+        _info("-" * 65)
+        _info("Exiting without rendering.")
         return 0
 
     temp_dir = temp_dir_display
@@ -323,23 +382,42 @@ def main(args=None):
 
         all_success = True
         has_processed = False
+        dive_counters = {}
 
         for d_idx, dive in enumerate(dives):
-            current_dive_id = d_idx + 1
-            if target_dives and current_dive_id not in target_dives:
+            d_start, d_end = dive['Time'].min(), dive['Time'].max()
+            dive_date = datetime.datetime.fromtimestamp(d_start, timezone.utc).strftime('%Y-%m-%d')
+            
+            if dive_date not in dive_counters:
+                dive_counters[dive_date] = 1
+            else:
+                dive_counters[dive_date] += 1
+                
+            current_dive_id = dive_counters[dive_date]
+            global_dive_id = d_idx + 1
+
+            if target_dives and global_dive_id not in target_dives:
                 continue
 
-            d_start, d_end = dive['Time'].min(), dive['Time'].max()
-            _info(f"Processing Dive #{current_dive_id}: {d_start} to {d_end}")
+            _info(f"Processing Dive on {dive_date} (#{current_dive_id} for the day, #{global_dive_id} total): {d_start} to {d_end}")
             windows = calculate_highlight_windows(dive, d_start, d_end, parsed.mode)
 
             base_out, ext = os.path.splitext(parsed.output)
+            
+            # Remove "multiday" generic name from output if present, and inject date
+            if "multiday" in base_out:
+                base_out = base_out.replace("multiday", dive_date)
+            elif len(target_dates) > 1 and dive_date not in base_out:
+                # Inject date into custom output names during multi-day to prevent overwrites
+                base_out = f"{base_out}_{dive_date}"
+            
+            # Append dive ID if not already there
             if f"dive{current_dive_id}" not in base_out:
                 dive_output = f"{base_out}_dive{current_dive_id}{ext}"
             else:
-                dive_output = parsed.output
+                dive_output = f"{base_out}{ext}"
 
-            success = process_dive(current_dive_id, dive, windows, videos, calc_offset, temp_dir, dive_output, parsed.water, ffmpeg_bin, hw_encoder)
+            success = process_dive(global_dive_id, dive, windows, videos, calc_offset, temp_dir, dive_output, parsed.water, ffmpeg_bin, hw_encoder)
             
             if success:
                 has_processed = True

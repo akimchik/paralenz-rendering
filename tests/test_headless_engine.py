@@ -160,5 +160,57 @@ class TestHeadlessEngine(unittest.TestCase):
         self.assertEqual(ret, 0, f"main() failed:\nStdout: {stdout}\nStderr: {stderr}")
         self.assertTrue(os.path.exists(expected_output_file), f"FFmpeg failed to produce output video.\nStdout: {stdout}\nStderr: {stderr}")
 
+    def test_multi_day_auto_discovery(self):
+        """Verify multi-day processing works without --date flag."""
+        # Create a second video and log for the NEXT day
+        next_date = "2026-06-07"
+        next_epoch = 1780826400
+        next_start_utc = "2026-06-07T10:00:00Z"
+        
+        vid_path_2 = os.path.join(self.media_dir, "PARA0002.MP4")
+        from scripts.utils import get_ffmpeg_path
+        cmd = [
+            get_ffmpeg_path(), "-y", 
+            "-f", "lavfi", "-i", "color=c=red:s=3840x2160:r=60",
+            "-t", "2", "-metadata", f"creation_time={next_start_utc}",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", 
+            vid_path_2
+        ]
+        subprocess.run(cmd, capture_output=True)
+        
+        csv_path_2 = os.path.join(self.logs_dir, "LOG02.csv")
+        data = {
+            'Time': [next_epoch, next_epoch + 1, next_epoch + 2],
+            'Temperature': [20.3, 20.1, 19.8],
+            'Depth': [2.0, 15.5, 30.2],
+            'ISO8601': [next_date + "T10:00:00Z", next_date + "T10:00:01Z", next_date + "T10:00:02Z"]
+        }
+        pd.DataFrame(data).to_csv(csv_path_2, index=False)
+
+        output_file = os.path.join(self.test_dir, "final_multiday.mp4")
+        expected_dive1 = os.path.join(self.test_dir, "final_2026-06-06_dive1.mp4")
+        expected_dive2 = os.path.join(self.test_dir, "final_2026-06-07_dive1.mp4")
+        
+        args = [
+            # NOTE: NO --date FLAG!
+            "--logs_dir", self.logs_dir,
+            "--media_dir", self.media_dir,
+            "--output", output_file,
+            "--water", "none",
+            "--gap", "900"
+        ]
+        f_out = io.StringIO()
+        f_err = io.StringIO()
+        with redirect_stdout(f_out), redirect_stderr(f_err):
+            ret = main(args)
+            
+        stdout = f_out.getvalue()
+        stderr = f_err.getvalue()
+        
+        self.assertEqual(ret, 0, f"Multi-day failed:\nStdout: {stdout}\nStderr: {stderr}")
+        self.assertTrue(os.path.exists(expected_dive1), "Dive 1 missing")
+        self.assertTrue(os.path.exists(expected_dive2), "Dive 2 missing")
+        self.assertIn("Auto-discovered (2 days)", stdout)
+
 if __name__ == "__main__":
     unittest.main()

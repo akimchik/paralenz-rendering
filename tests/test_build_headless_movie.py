@@ -66,9 +66,17 @@ class TestBuildHeadlessMovie(unittest.TestCase):
             'ISO8601': ['2026-06-06T10:00:00Z', '2026-06-07T10:00:00Z'],
             'Time': [1000, 2000]
         })
-        df = load_and_filter_logs('/fake', '2026-06-06')
+        
+        # Test with date list
+        df = load_and_filter_logs('/fake', ['2026-06-06'])
         self.assertEqual(len(df), 1)
         self.assertEqual(df.iloc[0]['Time'], 1000)
+
+        # Test without date list (auto-discover all)
+        df_all = load_and_filter_logs('/fake', [])
+        self.assertEqual(len(df_all), 2)
+        self.assertEqual(df_all.iloc[0]['Time'], 1000)
+        self.assertEqual(df_all.iloc[1]['Time'], 2000)
 
     @patch('subprocess.run')
     def test_get_best_hardware_encoder_nvenc(self, mock_run):
@@ -176,15 +184,77 @@ class TestBuildHeadlessMovie(unittest.TestCase):
         
         with patch('scripts.build_headless_movie.discover_videos') as mock_discover:
             mock_discover.return_value = [{'ts': 0, 'dur': 100, 'width': 3840, 'path': 'fake.MP4'}]
-            ret = main(['--date', '2026-06-27', '--logs_dir', 'l', '--media_dir', 'm', '--info'])
+            import io
+            from contextlib import redirect_stdout
+            f_out = io.StringIO()
+            with redirect_stdout(f_out):
+                ret = main(['--date', '1970-01-01', '--logs_dir', 'l', '--media_dir', 'm', '--info'])
+            stdout = f_out.getvalue()
+            
             self.assertEqual(ret, 0)
+            self.assertIn("Global #01 | Date: 1970-01-01 | Day Dive #1 | Time: 00:00:01 - 00:01:01 UTC", stdout)
 
+    @patch('scripts.build_headless_movie.discover_videos')
     @patch('scripts.build_headless_movie.load_and_filter_logs')
-    def test_main_exception_handling(self, mock_load):
+    def test_main_exception_handling(self, mock_load, mock_discover):
         from scripts.build_headless_movie import main
+        mock_discover.return_value = [{'ts': 1000, 'dur': 100, 'path': 'fake'}]
         mock_load.side_effect = Exception("Simulated fatal error")
         with self.assertRaises(Exception):
             main(['--date', '2026-06-27', '--logs_dir', 'l', '--media_dir', 'm'])
+
+    @patch('scripts.build_headless_movie.subprocess.Popen')
+    def test_run_cmd_progress(self, mock_popen):
+        import io
+        import sys
+        from scripts.build_headless_movie import run_cmd
+        
+        mock_process = MagicMock()
+        mock_process.stdout = [
+            "frame=  100 fps= 30 q=28.0 size= 2048kB time=00:01:30.00 bitrate=3000.0kbits/s speed=1.5x\n",
+            "frame=  200 fps= 30 q=28.0 size= 4096kB time=00:03:00.00 bitrate=3000.0kbits/s speed=1.5x\n"
+        ]
+        mock_process.returncode = 0
+        mock_popen.return_value = mock_process
+        
+        captured_output = io.StringIO()
+        original_stdout = sys.stdout
+        sys.stdout = captured_output
+        try:
+            res = run_cmd(["fake_cmd"], total_duration=360.0)
+        finally:
+            sys.stdout = original_stdout
+            
+        output = captured_output.getvalue()
+        self.assertIn("00:01:30 / 00:06:00.000 (25.0%)", output)
+        self.assertIn("00:03:00 / 00:06:00.000 (50.0%)", output)
+        self.assertEqual(res.returncode, 0)
+        
+    @patch('scripts.build_headless_movie.subprocess.Popen')
+    def test_run_cmd_no_total_duration(self, mock_popen):
+        import io
+        import sys
+        from scripts.build_headless_movie import run_cmd
+        
+        mock_process = MagicMock()
+        mock_process.stdout = [
+            "time=00:01:30.00\n"
+        ]
+        mock_process.returncode = 0
+        mock_popen.return_value = mock_process
+        
+        captured_output = io.StringIO()
+        original_stdout = sys.stdout
+        sys.stdout = captured_output
+        try:
+            res = run_cmd(["fake_cmd"])
+        finally:
+            sys.stdout = original_stdout
+            
+        output = captured_output.getvalue()
+        self.assertIn("00:01:30", output)
+        self.assertNotIn("%", output)
+        self.assertEqual(res.returncode, 0)
 
 if __name__ == "__main__":
     unittest.main()
