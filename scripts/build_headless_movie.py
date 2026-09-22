@@ -242,6 +242,7 @@ def process_dive(dive_id, dive, windows, videos, calc_offset, temp_dir, output_f
 
                         f_srt.write(f"{srt_idx}\n")
                         f_srt.write(f"{format_srt_time(current_virtual_time + rel_t)} --> {format_srt_time(current_virtual_time + end_t)}\n")
+                        # Add the text
                         f_srt.write(f"Depth: {row['Depth']}m | Temp: {row['Temperature']}C\n\n")
                         srt_idx += 1
                         
@@ -255,14 +256,15 @@ def process_dive(dive_id, dive, windows, videos, calc_offset, temp_dir, output_f
     
     # Properly format the subtitles string
     # Replace literal colons in escaped_srt path with \\: for ffmpeg
-    escaped_srt = escaped_srt.replace(':', '\\\\:')
-    
-    vf_arg = f"{cc_filter}subtitles=f='{escaped_srt}':force_style='FontSize=5,Alignment=7,BorderStyle=3,Outline=1,Shadow=0,MarginV=15,MarginR=15,FontName=Arial'"
+    escaped_srt = srt_path.replace("\\", "\\\\").replace(":", "\\:")
+    # Properly format the subtitles string for native look (Bottom Right, Outline, No Box)
+    vf_arg = f"{cc_filter}subtitles=f='{escaped_srt}':force_style='FontSize=5,Alignment=3,BorderStyle=1,Outline=1,Shadow=1,MarginV=20,MarginR=20,FontName=Arial'"
 
     cmd = [
         ffmpeg_bin, '-y',
         '-f', 'concat', '-safe', '0', '-i', list_path,
         '-vf', vf_arg,
+        '-sn',  # Strip embedded soft subtitles to prevent double telemetry overlays
         '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'pc',
         '-c:v', hw_encoder, '-b:v', '80M', '-r', '60',
         '-c:a', 'aac', '-b:a', '320k',
