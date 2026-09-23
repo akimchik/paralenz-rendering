@@ -242,8 +242,8 @@ def process_dive(dive_id, dive, windows, videos, calc_offset, temp_dir, output_f
 
                         f_srt.write(f"{srt_idx}\n")
                         f_srt.write(f"{format_srt_time(current_virtual_time + rel_t)} --> {format_srt_time(current_virtual_time + end_t)}\n")
-                        # Add the text
-                        f_srt.write(f"Depth: {row['Depth']}m | Temp: {row['Temperature']}C\n\n")
+                        # Format precisely like the native camera (Depth on top, Temp on bottom, no prefixes)
+                        f_srt.write(f"{row['Depth']} m\n{row['Temperature']} °C\n\n")
                         srt_idx += 1
                         
                     current_virtual_time += s_dur
