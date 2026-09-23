@@ -263,8 +263,8 @@ def process_dive(dive_id, dive, windows, videos, calc_offset, temp_dir, output_f
     cmd = [
         ffmpeg_bin, '-y',
         '-f', 'concat', '-safe', '0', '-i', list_path,
+        '-map', '0:v:0', '-map', '0:a:0?',  # Strictly copy ONLY the first video and first audio track (strips telemetry hidden in secondary audio/data tracks)
         '-vf', vf_arg,
-        '-sn',  # Strip embedded soft subtitles to prevent double telemetry overlays
         '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'pc',
         '-c:v', hw_encoder, '-b:v', '80M', '-r', '60',
         '-c:a', 'aac', '-b:a', '320k',
