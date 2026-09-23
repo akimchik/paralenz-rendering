@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v3.3.1] - 2026-09-22
 
 ### Changed
-- **Telemetry Styling**: Updated the dynamic CSV telemetry HUD to match the camera's native look (Bottom Right, large white font, black outline without solid background box). Added `-sn` flag to strip the hidden soft-subtitle track to prevent double-overlay glitches.
+- **Telemetry Styling**: Updated the dynamic CSV telemetry HUD to Top Right with a clean 1px black outline. Added explicit stream mapping (`-map 0:v:0 -map 0:a:0?`) to strip hidden camera data tracks that caused double-overlay glitches.
 
 ### Fixed
 - **Freshwater Color Correction**: Reverted the overly aggressive blue channel reduction (`b='0/0 0.5/0.25 1/1'`) introduced in v3.3.0, which caused an unnatural yellow/green tint. Restored the original, more natural freshwater filter curve.
