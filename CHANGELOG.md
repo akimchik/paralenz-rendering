@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.3.1] - 2026-09-22
+
+### Changed
+- **Telemetry Styling**: Updated the dynamic CSV telemetry HUD to Top Right (`Alignment=7`) with a clean 1px black outline. Added explicit stream mapping (`-map 0:v:0 -map 0:a:0?`) to strip hidden camera data tracks that caused double-overlay glitches.
+- **Resolution Override**: The render pipeline now explicitly forces output resolution to 4K (`-s 3840x2160`), ensuring consistent 4K 60FPS video quality even if the camera scales down the recording due to native overlay settings.
+
+### Fixed
+- **Windows CI & Testing**: Fixed cross-platform path assertions in tests and `cp1252` encoding issues on Windows CI runners. Fixed shallow clone history in GitHub Actions (`fetch-depth: 0`) to correctly enforce CHANGELOG validation in Pull Requests.
+- **Freshwater Color Correction**: Reverted the overly aggressive blue channel reduction (`b='0/0 0.5/0.25 1/1'`) introduced in v3.3.0, which caused an unnatural yellow/green tint. Restored the original, more natural freshwater filter curve.
+
 ## [v3.3.0] - 2026-09-22
 
 ### Added

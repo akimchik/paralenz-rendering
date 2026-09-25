@@ -81,7 +81,7 @@ class TestHeadlessEngine(unittest.TestCase):
         ffmpeg_cmd = get_ffmpeg_path()
         cmd = [
             ffmpeg_cmd, "-y", 
-            "-f", "lavfi", "-i", "color=c=blue:s=3840x2160:r=60",
+            "-f", "lavfi", "-i", "color=c=blue:s=1920x1080:r=60",
             "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
             "-t", "2", "-metadata", f"creation_time={self.start_utc}",
             "-c:v", "libx264", "-pix_fmt", "yuv420p", 
@@ -125,6 +125,11 @@ class TestHeadlessEngine(unittest.TestCase):
         stderr = f_err.getvalue()
         self.assertEqual(ret, 0, f"main() failed:\nStdout: {stdout}\nStderr: {stderr}")
         self.assertTrue(os.path.exists(expected_output_file), f"FFmpeg failed to produce output video.\nStdout: {stdout}\nStderr: {stderr}")
+        
+        info = inspect_video(expected_output_file)
+        self.assertIsNotNone(info)
+        self.assertEqual(info['width'], 3840, "Output video width must be exactly 3840 (4K)")
+        self.assertEqual(info['height'], 2160, "Output video height must be exactly 2160 (4K)")
 
         # Validate the output with inspect_video (port from validate_output.py)
         info = inspect_video(expected_output_file)

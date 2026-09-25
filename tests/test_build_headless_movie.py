@@ -138,7 +138,7 @@ class TestBuildHeadlessMovie(unittest.TestCase):
         
         self.assertIn("curves=r=", vf_string)
         self.assertIn("subtitles=", vf_string)
-        self.assertIn("temp/sub_1.srt", vf_string.replace('\\', '/'))
+        self.assertIn("sub_1.srt", vf_string)
 
     @patch('scripts.build_headless_movie.load_and_filter_logs')
     @patch('scripts.build_headless_movie.detect_dives')

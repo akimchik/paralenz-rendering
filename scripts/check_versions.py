@@ -46,11 +46,11 @@ def check_versions():
     # 4. Check Branch Name (if in CI and not on main)
     # GitHub Actions sets GITHUB_REF_NAME to the branch name
     branch = os.environ.get("GITHUB_HEAD_REF") or os.environ.get("GITHUB_REF_NAME", "")
-    if branch and branch != "main" and "/v" in branch:
-        # e.g. feat/v321-something -> 321
-        b_match = re.search(r"/v(\d)(\d)(\d)-", branch)
+    if branch and branch != "main" and "v" in branch:
+        # Extract version like v3.3.1 from branch name
+        b_match = re.search(r"v(\d+\.\d+\.\d+)", branch)
         if b_match:
-            b_version = f"{b_match.group(1)}.{b_match.group(2)}.{b_match.group(3)}"
+            b_version = b_match.group(1)
             if b_version != expected_version:
                 errors.append(f"Branch name '{branch}' implies v{b_version}, but files have v{expected_version}")
             else:

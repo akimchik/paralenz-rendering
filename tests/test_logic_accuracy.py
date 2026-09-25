@@ -55,7 +55,7 @@ class TestLogicAccuracy(unittest.TestCase):
         self.assertEqual(get_color_correction_filter(water_type='saltwater'), "curves=r='0/0 0.5/0.58 1/1':b='0/0 0.5/0.45 1/1',")
         
         # Test freshwater
-        self.assertEqual(get_color_correction_filter(water_type='freshwater'), "curves=r='0/0 0.5/0.55 1/1':g='0/0 0.5/0.45 1/1':b='0/0 0.5/0.25 1/1',")
+        self.assertEqual(get_color_correction_filter(water_type='freshwater'), "curves=r='0/0 0.5/0.55 1/1':g='0/0 0.5/0.45 1/1',")
 
 if __name__ == "__main__":
     unittest.main()

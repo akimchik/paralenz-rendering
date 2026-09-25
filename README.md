@@ -1,4 +1,4 @@
-# Headless Dive Automation (v3.3.0)
+# Headless Dive Automation (v3.3.1)
 
 Automate the creation of 4K 60fps diving movies and highlight reels directly from your camera's DCIM folder, integrated with real-time telemetry data.
 
@@ -183,7 +183,8 @@ The system automatically detects multiple dives in your logs using a configurabl
 > The default gap is `900` seconds (15 mins) to accommodate surface intervals. If you need tighter or looser split thresholds, pass a custom value using `--gap`.
 
 ### Dynamic HUD
-A real-time depth and temperature HUD is injected into the video using dynamic SubRip (`.srt`) subtitle generation.
+A real-time depth and temperature HUD is injected into the Top Right corner of the video using dynamic SubRip (`.srt`) subtitle generation. 
+The HUD uses a crisp 1px outline style designed to be highly legible on any background without overlapping the camera's native burned-in telemetry in the bottom right.
 
 > [!NOTE]
 > The script relies on native camera hardware RTC synchronization (zero-offset) by default, ensuring perfect alignment between the `.MP4` files and `.CSV` telemetry logs. A manual offset can be supplied via `--offset` only if drift occurs.

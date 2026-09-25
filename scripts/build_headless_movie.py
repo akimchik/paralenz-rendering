@@ -106,7 +106,7 @@ def get_color_correction_filter(water_type='saltwater'):
     if water_type == 'saltwater':
         return "curves=r='0/0 0.5/0.58 1/1':b='0/0 0.5/0.45 1/1',"
     elif water_type == 'freshwater':
-        return "curves=r='0/0 0.5/0.55 1/1':g='0/0 0.5/0.45 1/1':b='0/0 0.5/0.25 1/1',"
+        return "curves=r='0/0 0.5/0.55 1/1':g='0/0 0.5/0.45 1/1',"
     return ""
 
 def parse_dive_list(dive_list_str):
@@ -242,6 +242,7 @@ def process_dive(dive_id, dive, windows, videos, calc_offset, temp_dir, output_f
 
                         f_srt.write(f"{srt_idx}\n")
                         f_srt.write(f"{format_srt_time(current_virtual_time + rel_t)} --> {format_srt_time(current_virtual_time + end_t)}\n")
+                        # Add the text
                         f_srt.write(f"Depth: {row['Depth']}m | Temp: {row['Temperature']}C\n\n")
                         srt_idx += 1
                         
@@ -255,16 +256,17 @@ def process_dive(dive_id, dive, windows, videos, calc_offset, temp_dir, output_f
     
     # Properly format the subtitles string
     # Replace literal colons in escaped_srt path with \\: for ffmpeg
-    escaped_srt = escaped_srt.replace(':', '\\\\:')
-    
-    vf_arg = f"{cc_filter}subtitles=f='{escaped_srt}':force_style='FontSize=5,Alignment=7,BorderStyle=3,Outline=1,Shadow=0,MarginV=15,MarginR=15,FontName=Arial'"
+    escaped_srt = srt_path.replace("\\", "\\\\").replace(":", "\\:")
+    # Place in Top Right (Alignment=7 in SSA format) with 1px outline style
+    vf_arg = f"{cc_filter}subtitles=f='{escaped_srt}':force_style='FontSize=5,Alignment=7,BorderStyle=1,Outline=1,Shadow=1,MarginV=20,MarginR=20,FontName=Arial'"
 
     cmd = [
         ffmpeg_bin, '-y',
         '-f', 'concat', '-safe', '0', '-i', list_path,
+        '-map', '0:v:0', '-map', '0:a:0?',  # Strictly copy ONLY the first video and first audio track (strips telemetry hidden in secondary audio/data tracks)
         '-vf', vf_arg,
         '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'pc',
-        '-c:v', hw_encoder, '-b:v', '80M', '-r', '60',
+        '-c:v', hw_encoder, '-b:v', '80M', '-r', '60', '-s', '3840x2160',
         '-c:a', 'aac', '-b:a', '320k',
         '-movflags', '+faststart',
         os.path.abspath(output_file)
