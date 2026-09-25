@@ -257,8 +257,8 @@ def process_dive(dive_id, dive, windows, videos, calc_offset, temp_dir, output_f
     # Properly format the subtitles string
     # Replace literal colons in escaped_srt path with \\: for ffmpeg
     escaped_srt = srt_path.replace("\\", "\\\\").replace(":", "\\:")
-    # Place in Top Right (Alignment=9) with 1px outline style
-    vf_arg = f"{cc_filter}subtitles=f='{escaped_srt}':force_style='FontSize=5,Alignment=9,BorderStyle=1,Outline=1,Shadow=1,MarginV=20,MarginR=20,FontName=Arial'"
+    # Place in Top Right (Alignment=7 in SSA format) with 1px outline style
+    vf_arg = f"{cc_filter}subtitles=f='{escaped_srt}':force_style='FontSize=5,Alignment=7,BorderStyle=1,Outline=1,Shadow=1,MarginV=20,MarginR=20,FontName=Arial'"
 
     cmd = [
         ffmpeg_bin, '-y',
@@ -266,7 +266,7 @@ def process_dive(dive_id, dive, windows, videos, calc_offset, temp_dir, output_f
         '-map', '0:v:0', '-map', '0:a:0?',  # Strictly copy ONLY the first video and first audio track (strips telemetry hidden in secondary audio/data tracks)
         '-vf', vf_arg,
         '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'pc',
-        '-c:v', hw_encoder, '-b:v', '80M', '-r', '60',
+        '-c:v', hw_encoder, '-b:v', '80M', '-r', '60', '-s', '3840x2160',
         '-c:a', 'aac', '-b:a', '320k',
         '-movflags', '+faststart',
         os.path.abspath(output_file)
