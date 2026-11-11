@@ -30,6 +30,8 @@ scripts/plan_transitions.txt
 
 # Skill artifacts
 *.skill
+skill/
+.agents/
 
 # Temporary FFmpeg output
 temp_slices_full/

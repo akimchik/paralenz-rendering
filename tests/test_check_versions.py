@@ -1,17 +1,18 @@
 import unittest
 from unittest.mock import patch, mock_open
-import sys
 
 from scripts.check_versions import check_versions
 
+
 class TestCheckVersions(unittest.TestCase):
     @patch('sys.exit', side_effect=SystemExit)
+    @patch('os.path.exists', return_value=True)
     @patch('builtins.open', new_callable=mock_open)
     @patch('os.environ.get')
     @patch('builtins.print')
-    def test_check_versions_success(self, mock_print, mock_env, mock_file, mock_exit):
+    def test_check_versions_success_with_local_skill(self, mock_print, mock_env, mock_file, mock_exists, mock_exit):
         mock_env.return_value = "feat/v3.2.1-something"
-        
+
         def mock_file_content(filename, *args, **kwargs):
             if "README.md" in filename:
                 return mock_open(read_data="# Headless Dive Automation (v3.2.1)")()
@@ -20,9 +21,32 @@ class TestCheckVersions(unittest.TestCase):
             elif "CHANGELOG.md" in filename:
                 return mock_open(read_data="## [v3.2.1]")()
             return mock_open(read_data="")()
-            
+
         mock_file.side_effect = mock_file_content
-        
+
+        try:
+            check_versions()
+        except SystemExit:
+            self.fail("check_versions() raised SystemExit unexpectedly")
+        mock_exit.assert_not_called()
+
+    @patch('sys.exit', side_effect=SystemExit)
+    @patch('os.path.exists', return_value=False)
+    @patch('builtins.open', new_callable=mock_open)
+    @patch('os.environ.get')
+    @patch('builtins.print')
+    def test_check_versions_success_without_local_skill(self, mock_print, mock_env, mock_file, mock_exists, mock_exit):
+        mock_env.return_value = "chore/privatize-skills-(1)"
+
+        def mock_file_content(filename, *args, **kwargs):
+            if "README.md" in filename:
+                return mock_open(read_data="# Headless Dive Automation (v3.3.1)")()
+            elif "CHANGELOG.md" in filename:
+                return mock_open(read_data="## [Unreleased]\n\n## [v3.3.1]")()
+            return mock_open(read_data="")()
+
+        mock_file.side_effect = mock_file_content
+
         try:
             check_versions()
         except SystemExit:
@@ -39,12 +63,13 @@ class TestCheckVersions(unittest.TestCase):
         mock_exit.assert_called_once_with(1)
 
     @patch('sys.exit', side_effect=SystemExit)
+    @patch('os.path.exists', return_value=True)
     @patch('builtins.open', new_callable=mock_open)
     @patch('os.environ.get')
     @patch('builtins.print')
-    def test_check_versions_mismatch(self, mock_print, mock_env, mock_file, mock_exit):
+    def test_check_versions_mismatch(self, mock_print, mock_env, mock_file, mock_exists, mock_exit):
         mock_env.return_value = "main"
-        
+
         def mock_file_content(filename, *args, **kwargs):
             if "README.md" in filename:
                 return mock_open(read_data="# Headless Dive Automation (v3.2.1)")()
@@ -53,12 +78,13 @@ class TestCheckVersions(unittest.TestCase):
             elif "CHANGELOG.md" in filename:
                 return mock_open(read_data="## [v3.1.0]")()
             return mock_open(read_data="")()
-            
+
         mock_file.side_effect = mock_file_content
-        
+
         with self.assertRaises(SystemExit):
             check_versions()
         mock_exit.assert_called_once_with(1)
+
 
 if __name__ == "__main__":
     unittest.main()
