@@ -21,14 +21,18 @@ def check_versions():
     expected_version = match.group(1)
     print(f"[OK] Found canonical version v{expected_version} in README.md")
 
-    # 2. Check SKILL.md
-    with open("skill/paralenz-rendering/SKILL.md", "r") as f:
-        skill = f.read()
-    
-    if f"Paralenz Rendering Standards (v{expected_version} Modular Architecture)" not in skill:
-        errors.append(f"SKILL.md does not contain 'Paralenz Rendering Standards (v{expected_version} Modular Architecture)'")
+    # 2. Check SKILL.md (validated locally when present; skipped in CI if git-ignored)
+    skill_path = os.path.join("skill", "paralenz-rendering", "SKILL.md")
+    if os.path.exists(skill_path):
+        with open(skill_path, "r") as f:
+            skill = f.read()
+
+        if f"Paralenz Rendering Standards (v{expected_version} Modular Architecture)" not in skill:
+            errors.append(f"SKILL.md does not contain 'Paralenz Rendering Standards (v{expected_version} Modular Architecture)'")
+        else:
+            print(f"[OK] SKILL.md version matches (v{expected_version})")
     else:
-        print(f"[OK] SKILL.md version matches (v{expected_version})")
+        print("[SKIP] Local skill/paralenz-rendering/SKILL.md not found; skipping SKILL.md check.")
 
     # 3. Check CHANGELOG.md
     with open("CHANGELOG.md", "r") as f:
